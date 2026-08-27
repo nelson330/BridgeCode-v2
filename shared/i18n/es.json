@@ -1,0 +1,172 @@
+{
+  "app": {
+    "title": "AulaPlay",
+    "tagline": "Gamificación educativa interactiva para el aula",
+    "modeLocal": "Modo Local (Proyección)",
+    "modeHosted": "Modo Hosted",
+    "themeLight": "Modo Claro",
+    "themeDark": "Modo Oscuro",
+    "colorblindMode": "Modo Daltónico",
+    "soundEnabled": "Sonido Activado",
+    "soundMuted": "Sonido Silenciado"
+  },
+  "nav": {
+    "dashboard": "Panel Docente",
+    "studentPortal": "Mi Portal",
+    "forum": "Foro Comunitario",
+    "admin": "Admin",
+    "joinPin": "Unirse con PIN",
+    "logout": "Cerrar Sesión",
+    "login": "Iniciar Sesión",
+    "menu": "Menú",
+    "quickSettings": "Ajustes Rápidos"
+  },
+  "dashboard": {
+    "title": "Panel del Docente",
+    "welcome": "Bienvenido",
+    "selectClass": "Seleccionar Clase:",
+    "allClasses": "Todas las Clases",
+    "createClass": "Crear Nueva Clase",
+    "tabs": {
+      "classes": "Mis Clases",
+      "students": "Alumnos",
+      "lessons": "Lecciones",
+      "homework": "Tareas",
+      "ranking": "Ranking",
+      "gradebook": "Calificaciones",
+      "wall": "Muro de Clase",
+      "ai_config": "Configuración IA"
+    },
+    "classesTab": {
+      "title": "Mis Clases Registradas",
+      "subtitle": "Crea, edita o administra los grupos escolares.",
+      "code": "CÓDIGO:",
+      "studentsCount": "Alumnos",
+      "lessonsCount": "Lecciones",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Estás seguro de eliminar la clase? Se borrarán sus lecciones y datos asociados.",
+      "noClasses": "No tienes clases registradas",
+      "noClassesDesc": "Crea tu primera clase para comenzar a matricular alumnos y asignar actividades."
+    },
+    "studentsTab": {
+      "title": "Gestión de Alumnos & Credenciales",
+      "subtitle": "Crea cuentas, reinicia contraseñas o descarga listas de acceso.",
+      "singleStudent": "Nuevo Alumno",
+      "batchCsv": "Carga por Lote (CSV)",
+      "table": {
+        "name": "Nombre / Alumno",
+        "username": "Usuario de Login",
+        "status": "Estado",
+        "active": "Activo",
+        "actions": "Acciones",
+        "changePass": "Cambiar Clave",
+        "edit": "Editar",
+        "remove": "Dar de Baja",
+        "confirmRemove": "¿Dar de baja a este estudiante de la clase?"
+      }
+    },
+    "lessonsTab": {
+      "title": "Lecciones & Contenidos Teóricos",
+      "subtitle": "Crea unidades con material de lectura, PDFs, imágenes y ejercicios interactivos.",
+      "newLesson": "Nueva Lección",
+      "launchLive": "Lanzar en Datashow",
+      "createExercise": "Crear Ejercicio Manual",
+      "publishForum": "Publicar en Foro",
+      "deleteLesson": "Eliminar Lección",
+      "confirmDelete": "¿Eliminar esta lección y todos sus ejercicios?"
+    },
+    "homeworkTab": {
+      "title": "Tareas y Actividades Asignadas",
+      "subtitle": "Programa cuestionarios, lecturas obligatorias o debates para tu clase.",
+      "assignHomework": "Asignar Nueva Tarea",
+      "dueAt": "Fecha Límite:",
+      "type": "Tipo:",
+      "quiz": "Cuestionario",
+      "reading": "Lectura",
+      "discussion": "Debate",
+      "edit": "Editar Tarea",
+      "delete": "Eliminar Tarea"
+    }
+  },
+  "student": {
+    "portalTitle": "Portal del Estudiante",
+    "welcome": "Bienvenido",
+    "liveAlert": "¡Partida en Vivo!",
+    "liveAlertDesc": "Tu profesor ha iniciado una sala de juego interactiva.",
+    "joinLive": "Unirse a la Partida",
+    "battleLaunch": "Batalla 1v1",
+    "tabs": {
+      "homework": "Mis Tareas",
+      "lessons": "Temario & Lecturas",
+      "wall": "Muro de la Clase",
+      "battles": "Batallas 1v1",
+      "ranking": "Salón de la Fama"
+    },
+    "readingConfirmed": "Lectura Ya Confirmada",
+    "practiceAvailable": "Práctica Ilimitada (1x Puntos)",
+    "activeGameBanner": "¡Hay una partida en vivo en tu clase!",
+    "joinGame": "Unirse a la Partida",
+    "emptyHomework": "No tienes tareas pendientes.",
+    "emptyLessons": "No hay lecciones registradas en esta clase."
+  },
+  "ranking": {
+    "title": "Salón de la Fama & Clasificación",
+    "subtitle": "Compite, responde con precisión y sube al podio de honor.",
+    "filterAll": "Todas las Clases (Global)",
+    "filterClass": "Clase",
+    "podium1st": "Top #1 Global",
+    "tableRank": "Posición",
+    "tableStudent": "Estudiante",
+    "tableClass": "Clase",
+    "tableLevel": "Nivel & Racha",
+    "tablePoints": "Puntos Totales",
+    "tableAccuracy": "Precisión",
+    "empty": "Aún no hay puntuaciones registradas en el ranking."
+  },
+  "battles": {
+    "title": "Arena de Batallas 1v1",
+    "subtitle": "Duelos rápidos de trivia contra compañeros de clase o partidas fantasma.",
+    "selectTopic": "Selecciona el Tema de la Batalla:",
+    "searchOpponent": "¡Buscar Oponente y Luchar!",
+    "matching": "Buscando Oponente...",
+    "matchingDesc": "Emparejando con las mejores partidas de tu clase",
+    "round": "Ronda",
+    "epicVictory": "¡Victoria Épica!",
+    "goodFight": "¡Buen Combate!",
+    "playAgain": "Jugar Otra Batalla",
+    "finish": "Finalizar"
+  },
+  "games": {
+    "trivia": "Trivia",
+    "roulette": "Ruleta",
+    "battle": "Batalla 1v1",
+    "race": "Carrera",
+    "pin": "PIN de Sesión",
+    "join": "Unirse a la partida",
+    "points": "Puntos",
+    "streak": "Racha",
+    "streakBonus": "Bonus de racha",
+    "speedBonus": "Bonus de velocidad",
+    "leaderboard": "Clasificación",
+    "waitingPlayers": "Esperando participantes...",
+    "showSolution": "Mostrar solución",
+    "nextQuestion": "Siguiente pregunta",
+    "finishGame": "Finalizar partida",
+    "responsesReceived": "Respuestas Recibidas:"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "loading": "Cargando...",
+    "success": "Operación completada con éxito",
+    "language": "Idioma",
+    "colorblindMode": "Modo Daltónico",
+    "lightMode": "Modo Claro",
+    "darkMode": "Modo Oscuro",
+    "close": "Cerrar"
+  }
+}

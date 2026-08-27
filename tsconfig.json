@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["bun-types"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@apps/*": ["src/apps/*"],
+      "@shared/*": ["shared/*"],
+      "@web/*": ["apps/web/src/*"]
+    }
+  },
+  "include": ["src/**/*", "apps/web/src/**/*", "shared/**/*", "tests/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "dist", "data"]
+}

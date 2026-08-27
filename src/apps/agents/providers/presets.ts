@@ -1,0 +1,68 @@
+import type { AiProviderPreset } from '@shared/contracts/ai'
+
+export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
+  {
+    id: 'openai',
+    name: 'OpenAI (ChatGPT)',
+    defaultBaseUrl: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4o-mini',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: false,
+  },
+  {
+    id: 'groq',
+    name: 'Groq (Llama / Mixtral Ultra Rápido)',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'llama-3.3-70b-versatile',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek AI',
+    defaultBaseUrl: 'https://api.deepseek.com/v1',
+    defaultModel: 'deepseek-chat',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'google',
+    name: 'Google Gemini',
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-1.5-flash',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter (Multi-Model Hub)',
+    defaultBaseUrl: 'https://openrouter.ai/api/v1',
+    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'zen',
+    name: 'OpenCode Zen (Z.ai / GLM)',
+    defaultBaseUrl: 'https://api.z.ai/v1',
+    defaultModel: 'glm-4-flash',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'nim',
+    name: 'NVIDIA NIM',
+    defaultBaseUrl: 'https://integrate.api.nvidia.com/v1',
+    defaultModel: 'meta/llama-3.1-70b-instruct',
+    requiresCustomUrl: false,
+    isFreeTierAvailable: true,
+  },
+  {
+    id: 'openai-compatible',
+    name: 'Custom OpenAI-Compatible API',
+    defaultBaseUrl: '',
+    defaultModel: '',
+    requiresCustomUrl: true,
+    isFreeTierAvailable: false,
+  },
+]

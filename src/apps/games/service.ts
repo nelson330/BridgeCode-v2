@@ -36,10 +36,16 @@ export class GamesService {
     }
 
     // 2. Load exercises
-    const exerciseList = await db.select().from(exercises).where(eq(exercises.lessonId, req.lessonId))
+    let exerciseList = await db.select().from(exercises).where(eq(exercises.lessonId, req.lessonId))
 
     if (exerciseList.length === 0) {
       throw AppError.badRequest('La lección no contiene ejercicios')
+    }
+
+    // Tournament mode: shuffle and take a random subset
+    if (req.mode === 'tournament' && req.tournamentSize) {
+      const shuffled = [...exerciseList].sort(() => Math.random() - 0.5)
+      exerciseList = shuffled.slice(0, Math.min(req.tournamentSize, exerciseList.length))
     }
 
     const sessionId = `ses_${nanoid(10)}`

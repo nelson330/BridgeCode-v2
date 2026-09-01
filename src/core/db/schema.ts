@@ -136,7 +136,7 @@ export const liveSessions = sqliteTable('live_sessions', {
   status: text('status', { enum: ['lobby', 'active', 'finished', 'closed'] })
     .notNull()
     .default('lobby'),
-  mode: text('mode', { enum: ['trivia', 'roulette', 'battle', 'race', 'teams'] })
+  mode: text('mode', { enum: ['trivia', 'roulette', 'battle', 'race', 'teams', 'tournament'] })
     .notNull()
     .default('trivia'),
   stateJson: text('state_json'),

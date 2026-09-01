@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const GameModeSchema = z.enum(['trivia', 'roulette', 'battle', 'race', 'teams'])
+export const GameModeSchema = z.enum(['trivia', 'roulette', 'battle', 'race', 'teams', 'tournament'])
 export type GameMode = z.infer<typeof GameModeSchema>
 
 export const SessionStatusSchema = z.enum(['lobby', 'active', 'finished', 'closed'])
@@ -10,6 +10,7 @@ export const CreateSessionRequestSchema = z.object({
   classId: z.string(),
   lessonId: z.string(),
   mode: GameModeSchema.default('trivia'),
+  tournamentSize: z.number().int().min(1).max(50).optional(),
 })
 export type CreateSessionRequest = z.infer<typeof CreateSessionRequestSchema>
 

@@ -376,23 +376,29 @@ export function Dashboard() {
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false)
   const [selectedLessonForLaunch, setSelectedLessonForLaunch] = useState<string>('')
   const [launchMode, setLaunchMode] = useState<string>('trivia')
+  const [tournamentSize, setTournamentSize] = useState(5)
 
   const handleLaunchSession = async (lessonId: string) => {
     setSelectedLessonForLaunch(lessonId)
     setLaunchMode('trivia')
+    setTournamentSize(5)
     setIsLaunchModalOpen(true)
   }
 
   const handleConfirmLaunch = async () => {
     if (!selectedLessonForLaunch) return
     try {
+      const body: any = {
+        classId: selectedClassId,
+        lessonId: selectedLessonForLaunch,
+        mode: launchMode,
+      }
+      if (launchMode === 'tournament') {
+        body.tournamentSize = tournamentSize
+      }
       const res = await apiFetch<{ session: any }>('/api/sessions', {
         method: 'POST',
-        body: JSON.stringify({
-          classId: selectedClassId,
-          lessonId: selectedLessonForLaunch,
-          mode: launchMode,
-        }),
+        body: JSON.stringify(body),
       })
       sound.playPowerup()
       setIsLaunchModalOpen(false)
@@ -1578,6 +1584,7 @@ export function Dashboard() {
               { value: 'race', label: 'Carrera', desc: 'Pura velocidad, sin bonus de racha', icon: '🏁' },
               { value: 'teams', label: 'Equipos', desc: '4 equipos comparten puntos', icon: '👥' },
               { value: 'battle', label: 'Batalla', desc: 'Equipos con bonus de racha', icon: '⚔️' },
+              { value: 'tournament', label: 'Torneo', desc: 'Subset aleatorio de N preguntas', icon: '🏆' },
             ].map((mode) => (
               <button
                 key={mode.value}
@@ -1595,6 +1602,25 @@ export function Dashboard() {
               </button>
             ))}
           </div>
+
+          {launchMode === 'tournament' && (
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+              <label className="text-xs font-bold text-slate-300 block">
+                Cantidad de preguntas del torneo
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={tournamentSize}
+                onChange={(e) => setTournamentSize(Number(e.target.value))}
+                className="text-sm"
+              />
+              <p className="text-[10px] text-slate-500">
+                Se seleccionarán {tournamentSize} preguntas al azar de la lección.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
             <Button type="button" variant="ghost" onClick={() => setIsLaunchModalOpen(false)}>

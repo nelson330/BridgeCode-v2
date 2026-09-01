@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { customAlphabet, nanoid } from 'nanoid'
 import { getDb } from '../../core/db/client'
 import {
+  answers,
   anticheatEvents,
   courseClasses,
   exercises,
@@ -181,6 +182,64 @@ export class GamesService {
       .limit(1)
     if (member.length === 0) {
       throw AppError.forbidden('No estás inscrito en la clase de esta sesión')
+    }
+  }
+
+  static async getSessionReport(userId: string, sessionId: string) {
+    const db = getDb()
+    const found = await db.select().from(liveSessions).where(eq(liveSessions.id, sessionId)).limit(1)
+    if (found.length === 0 || !found[0]) {
+      throw AppError.notFound('Sesión no encontrada')
+    }
+
+    await GamesService.assertSessionAccess(userId, found[0])
+
+    const session = found[0]
+
+    // Get all answers for this session
+    const sessionAnswers = await db.select().from(answers).where(eq(answers.sessionId, sessionId))
+
+    // Get anticheat events
+    const events = await db.select().from(anticheatEvents).where(eq(anticheatEvents.sessionId, sessionId))
+
+    // Calculate stats
+    const totalAnswers = sessionAnswers.length
+    const correctAnswers = sessionAnswers.filter((a) => a.isCorrect).length
+    const accuracyPercent = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0
+    const avgLatencyMs =
+      totalAnswers > 0
+        ? Math.round(sessionAnswers.reduce((sum, a) => sum + (a.latencyMs || 0), 0) / totalAnswers)
+        : 0
+
+    // Parse rank snapshot for podium
+    let podium: any[] = []
+    let questionStats: any[] = []
+    try {
+      if (session.rankSnapshotJson) {
+        const snapshot = JSON.parse(session.rankSnapshotJson)
+        podium = snapshot.podium || []
+        questionStats = snapshot.questionStats || []
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      sessionId,
+      lessonTitle: session.lessonId,
+      mode: session.mode,
+      status: session.status,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      stats: {
+        totalAnswers,
+        correctAnswers,
+        accuracyPercent,
+        avgLatencyMs,
+        anticheatAlerts: events.length,
+      },
+      podium,
+      questionStats,
     }
   }
 }

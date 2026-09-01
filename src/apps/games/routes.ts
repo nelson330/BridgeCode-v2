@@ -54,3 +54,11 @@ gameRoutes.post('/sessions/:id/anticheat-event', requireAuth(), async (c) => {
   )
   return c.json(result)
 })
+
+// Session report (Teacher or Webmaster)
+gameRoutes.get('/sessions/:id/report', requireAuth(), requireRole('teacher', 'webmaster'), async (c) => {
+  const user = c.get('user')
+  const sessionId = c.req.param('id')
+  const report = await GamesService.getSessionReport(user.id, sessionId)
+  return c.json({ report })
+})

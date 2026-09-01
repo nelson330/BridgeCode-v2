@@ -87,6 +87,7 @@ const SCHEMA_DDL = `
     points INTEGER NOT NULL DEFAULT 1,
     time_sec INTEGER NOT NULL DEFAULT 30,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    points_multiplier INTEGER NOT NULL DEFAULT 1,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
   );

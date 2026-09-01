@@ -7,11 +7,15 @@ import {
   Clock,
   HelpCircle,
   ListOrdered,
+  MapPin,
   MessageSquare,
   Plus,
   Shuffle,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
+  Type,
+  X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { apiFetch } from '../../lib/api'
@@ -31,7 +35,20 @@ interface ExerciseBuilderModalProps {
   onExerciseCreated: () => void
 }
 
-type ExerciseType = 'mc' | 'tf' | 'fill' | 'order' | 'match' | 'short' | 'open' | 'poll'
+type ExerciseType =
+  | 'mc'
+  | 'tf'
+  | 'fill'
+  | 'order'
+  | 'match'
+  | 'short'
+  | 'open'
+  | 'poll'
+  | 'type_answer'
+  | 'slider'
+  | 'pin_drop'
+  | 'word_cloud'
+  | 'slide'
 
 const EXERCISE_TYPES: { id: ExerciseType; label: string; icon: any; description: string }[] = [
   {
@@ -53,6 +70,18 @@ const EXERCISE_TYPES: { id: ExerciseType; label: string; icon: any; description:
     description: 'Texto con espacios [___] para completar con la palabra clave.',
   },
   {
+    id: 'type_answer',
+    label: 'Respuesta Exacta',
+    icon: Type,
+    description: 'Escribir el término o cifra exacta sin opciones a la vista.',
+  },
+  {
+    id: 'slider',
+    label: 'Slider Numérico',
+    icon: SlidersHorizontal,
+    description: 'Ajustar un valor en una barra numérica (fechas, porcentajes).',
+  },
+  {
     id: 'order',
     label: 'Ordenar Elementos',
     icon: ListOrdered,
@@ -63,6 +92,18 @@ const EXERCISE_TYPES: { id: ExerciseType; label: string; icon: any; description:
     label: 'Emparejar Columnas',
     icon: Shuffle,
     description: 'Pares de conceptos y sus definiciones correspondientes.',
+  },
+  {
+    id: 'pin_drop',
+    label: 'Marcar en Imagen',
+    icon: MapPin,
+    description: 'Colocar un marcador sobre una coordenada específica de una imagen.',
+  },
+  {
+    id: 'word_cloud',
+    label: 'Nube de Palabras',
+    icon: MessageSquare,
+    description: 'Recopilación libre de palabras clave sin puntuación competitiva.',
   },
   {
     id: 'short',
@@ -77,10 +118,10 @@ const EXERCISE_TYPES: { id: ExerciseType; label: string; icon: any; description:
     description: 'Pregunta de desarrollo para debate o reflexión en clase.',
   },
   {
-    id: 'poll',
-    label: 'Encuesta / Sondeo',
-    icon: BarChart,
-    description: 'Votación u opinión sin respuesta correcta ni penalización.',
+    id: 'slide',
+    label: 'Diapositiva',
+    icon: Sparkles,
+    description: 'Pantalla informativa con texto entre preguntas (sin scoring).',
   },
 ]
 
@@ -96,6 +137,7 @@ export function ExerciseBuilderModal({
   const [explanation, setExplanation] = useState('')
   const [points, setPoints] = useState(2)
   const [timeSec, setTimeSec] = useState(30)
+  const [pointsMultiplier, setPointsMultiplier] = useState(1)
   const [isSaving, setIsSaving] = useState(false)
 
   // MC options
@@ -116,6 +158,25 @@ export function ExerciseBuilderModal({
     { left: 'Concepto A', right: 'Definición A' },
     { left: 'Concepto B', right: 'Definición B' },
   ])
+
+  // Slider config
+  const [sliderMin, setSliderMin] = useState(0)
+  const [sliderMax, setSliderMax] = useState(100)
+  const [sliderCorrect, setSliderCorrect] = useState(50)
+  const [sliderTolerance, setSliderTolerance] = useState(5)
+
+  // Pin drop config
+  const [pinImageUrl, setPinImageUrl] = useState('')
+  const [pinCorrectX, setPinCorrectX] = useState(100)
+  const [pinCorrectY, setPinCorrectY] = useState(100)
+  const [pinTolerance, setPinTolerance] = useState(50)
+
+  // Word cloud sample words
+  const [cloudSampleWords, setCloudSampleWords] = useState('')
+
+  // Slide content
+  const [slideContent, setSlideContent] = useState('')
+  const [slideDuration, setSlideDuration] = useState(8)
 
   // Sync state when editing an existing exercise
   useState(() => {
@@ -210,6 +271,44 @@ export function ExerciseBuilderModal({
           .filter(Boolean)
         optionsJson = null
         answerJson = JSON.stringify({ validAnswers: validKeywords })
+      } else if (type === 'type_answer') {
+        const validAnswers = fillAnswers
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean)
+        if (validAnswers.length === 0) {
+          alert('Ingresa al menos una respuesta válida')
+          setIsSaving(false)
+          return
+        }
+        optionsJson = null
+        answerJson = JSON.stringify({ validAnswers, caseSensitive: false })
+      } else if (type === 'slider') {
+        optionsJson = null
+        answerJson = JSON.stringify({
+          min: sliderMin,
+          max: sliderMax,
+          correctValue: sliderCorrect,
+          tolerance: sliderTolerance,
+        })
+      } else if (type === 'pin_drop') {
+        optionsJson = null
+        answerJson = JSON.stringify({
+          imageUrl: pinImageUrl,
+          correctX: pinCorrectX,
+          correctY: pinCorrectY,
+          tolerancePx: pinTolerance,
+        })
+      } else if (type === 'word_cloud') {
+        const samples = cloudSampleWords
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean)
+        optionsJson = null
+        answerJson = JSON.stringify({ sampleWords: samples })
+      } else if (type === 'slide') {
+        optionsJson = null
+        answerJson = JSON.stringify({ durationSec: slideDuration })
       } else if (type === 'open') {
         optionsJson = null
         answerJson = JSON.stringify({ type: 'open' })
@@ -226,6 +325,7 @@ export function ExerciseBuilderModal({
             explanation: explanation.trim() || undefined,
             points,
             timeSec,
+            pointsMultiplier,
           }),
         })
       } else {
@@ -239,6 +339,7 @@ export function ExerciseBuilderModal({
             explanation: explanation.trim() || undefined,
             points,
             timeSec,
+            pointsMultiplier,
           }),
         })
       }
@@ -519,10 +620,160 @@ export function ExerciseBuilderModal({
               o revisión en clase.
             </p>
           )}
+
+          {/* TYPE ANSWER */}
+          {type === 'type_answer' && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-300 block">
+                Respuestas Aceptadas (separadas por comas, sin importar mayúsculas):
+              </label>
+              <Input
+                placeholder="Ej: fotosíntesis, Fotosintesis, FOTOSÍNTESIS"
+                value={fillAnswers}
+                onChange={(e) => setFillAnswers(e.target.value)}
+                required
+                className="text-xs"
+              />
+            </div>
+          )}
+
+          {/* SLIDER */}
+          {type === 'slider' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Valor Mínimo</label>
+                <Input
+                  type="number"
+                  value={sliderMin}
+                  onChange={(e) => setSliderMin(Number(e.target.value))}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Valor Máximo</label>
+                <Input
+                  type="number"
+                  value={sliderMax}
+                  onChange={(e) => setSliderMax(Number(e.target.value))}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Respuesta Correcta</label>
+                <Input
+                  type="number"
+                  value={sliderCorrect}
+                  onChange={(e) => setSliderCorrect(Number(e.target.value))}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Tolerancia (±)</label>
+                <Input
+                  type="number"
+                  value={sliderTolerance}
+                  onChange={(e) => setSliderTolerance(Number(e.target.value))}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PIN DROP */}
+          {type === 'pin_drop' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">URL de la Imagen</label>
+                <Input
+                  type="url"
+                  placeholder="https://..."
+                  value={pinImageUrl}
+                  onChange={(e) => setPinImageUrl(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">Coordenada X correcta</label>
+                  <Input
+                    type="number"
+                    value={pinCorrectX}
+                    onChange={(e) => setPinCorrectX(Number(e.target.value))}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">Coordenada Y correcta</label>
+                  <Input
+                    type="number"
+                    value={pinCorrectY}
+                    onChange={(e) => setPinCorrectY(Number(e.target.value))}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">Tolerancia (px)</label>
+                  <Input
+                    type="number"
+                    value={pinTolerance}
+                    onChange={(e) => setPinTolerance(Number(e.target.value))}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* WORD CLOUD */}
+          {type === 'word_cloud' && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-300 block">
+                Palabras de muestra esperadas (separadas por comas, opcional):
+              </label>
+              <Input
+                placeholder="Ej: célula, mitocondria, ADN, núcleo"
+                value={cloudSampleWords}
+                onChange={(e) => setCloudSampleWords(e.target.value)}
+                className="text-xs"
+              />
+              <p className="text-[10px] text-slate-500">
+                La nube de palabras no tiene puntuación competitiva.
+              </p>
+            </div>
+          )}
+
+          {/* SLIDE */}
+          {type === 'slide' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Contenido de la diapositiva</label>
+                <textarea
+                  rows={3}
+                  placeholder="Texto informativo que se mostrará entre preguntas..."
+                  value={slideContent}
+                  onChange={(e) => setSlideContent(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400">Duración (segundos)</label>
+                <CustomSelect
+                  value={slideDuration}
+                  onChange={(val) => setSlideDuration(Number(val))}
+                  options={[
+                    { value: 5, label: '5 segundos' },
+                    { value: 8, label: '8 segundos' },
+                    { value: 10, label: '10 segundos' },
+                    { value: 15, label: '15 segundos' },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Pedagogical Metadata (Points, Time, Explanation) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Pedagogical Metadata (Points, Time, Multiplier, Explanation) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
               <Award className="w-3.5 h-3.5 text-amber-400" />
@@ -553,6 +804,23 @@ export function ExerciseBuilderModal({
                 { value: 30, label: '30 Segundos (Estándar)' },
                 { value: 45, label: '45 Segundos (Medio)' },
                 { value: 60, label: '60 Segundos (Reflexivo)' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Multiplicador
+            </label>
+            <CustomSelect
+              value={pointsMultiplier}
+              onChange={(val) => setPointsMultiplier(Number(val))}
+              options={[
+                { value: 1, label: '×1 (Normal)' },
+                { value: 2, label: '×2 (Doble Puntos)' },
+                { value: 3, label: '×3 (Triple Puntos)' },
+                { value: 5, label: '×5 (Máximo)' },
               ]}
             />
           </div>

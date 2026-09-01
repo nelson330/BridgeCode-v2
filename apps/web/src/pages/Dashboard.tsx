@@ -372,17 +372,30 @@ export function Dashboard() {
     }
   }
 
+  // Launch session modal
+  const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false)
+  const [selectedLessonForLaunch, setSelectedLessonForLaunch] = useState<string>('')
+  const [launchMode, setLaunchMode] = useState<string>('trivia')
+
   const handleLaunchSession = async (lessonId: string) => {
+    setSelectedLessonForLaunch(lessonId)
+    setLaunchMode('trivia')
+    setIsLaunchModalOpen(true)
+  }
+
+  const handleConfirmLaunch = async () => {
+    if (!selectedLessonForLaunch) return
     try {
       const res = await apiFetch<{ session: any }>('/api/sessions', {
         method: 'POST',
         body: JSON.stringify({
           classId: selectedClassId,
-          lessonId,
-          mode: 'trivia',
+          lessonId: selectedLessonForLaunch,
+          mode: launchMode,
         }),
       })
       sound.playPowerup()
+      setIsLaunchModalOpen(false)
       const targetSessionId = res.session?.sessionId || res.session?.id || res.session
       navigate(`/host/${targetSessionId}`)
     } catch (err: any) {
@@ -1545,6 +1558,51 @@ export function Dashboard() {
           <div className="flex items-center justify-end pt-3 border-t border-slate-800">
             <Button variant="ghost" onClick={() => setIsPrintCardsOpen(false)}>
               Cerrar
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* MODAL 13: SELECCIONAR MODO DE JUEGO */}
+      <Dialog
+        open={isLaunchModalOpen}
+        onOpenChange={setIsLaunchModalOpen}
+        title="Seleccionar Modo de Juego"
+        description="Elige cómo quieres proyectar esta lección a tus alumnos."
+        className="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { value: 'trivia', label: 'Trivia Clásica', desc: 'Quiz individual con ranking', icon: '🎯' },
+              { value: 'race', label: 'Carrera', desc: 'Pura velocidad, sin bonus de racha', icon: '🏁' },
+              { value: 'teams', label: 'Equipos', desc: '4 equipos comparten puntos', icon: '👥' },
+              { value: 'battle', label: 'Batalla', desc: 'Equipos con bonus de racha', icon: '⚔️' },
+            ].map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => setLaunchMode(mode.value)}
+                className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                  launchMode === mode.value
+                    ? 'bg-indigo-600/20 border-indigo-400 ring-2 ring-indigo-500/30'
+                    : 'bg-slate-900 border-slate-800 hover:border-slate-600'
+                }`}
+              >
+                <div className="text-2xl mb-2">{mode.icon}</div>
+                <div className="font-bold text-white text-sm">{mode.label}</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">{mode.desc}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+            <Button type="button" variant="ghost" onClick={() => setIsLaunchModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={handleConfirmLaunch} className="gap-2">
+              <Tv className="w-4 h-4" />
+              <span>Lanzar Partida</span>
             </Button>
           </div>
         </div>

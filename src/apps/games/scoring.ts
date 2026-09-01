@@ -3,7 +3,9 @@ export function calculateScore(
   timeSec: number,
   latencyMs: number,
   currentStreak: number,
-  isCorrect: boolean
+  isCorrect: boolean,
+  mode: 'classic' | 'race' = 'classic',
+  pointsMultiplier = 1
 ): { pointsEarned: number; newStreak: number; multiplier: number } {
   if (!isCorrect) {
     return { pointsEarned: 0, newStreak: 0, multiplier: 1.0 }
@@ -17,15 +19,19 @@ export function calculateScore(
 
   const newStreak = currentStreak + 1
 
-  let multiplier = 1.0
-  if (newStreak === 2) multiplier = 1.2
-  else if (newStreak === 3) multiplier = 1.4
-  else if (newStreak === 4) multiplier = 1.6
-  else if (newStreak >= 5) multiplier = 2.0
+  let streakMultiplier = 1.0
+  if (mode === 'classic') {
+    if (newStreak === 2) streakMultiplier = 1.2
+    else if (newStreak === 3) streakMultiplier = 1.4
+    else if (newStreak === 4) streakMultiplier = 1.6
+    else if (newStreak >= 5) streakMultiplier = 2.0
+  }
+  // Race mode: no streak bonus, pure speed
 
-  const pointsEarned = Math.round(basePoints * 100 * speedFactor * multiplier)
+  const totalMultiplier = streakMultiplier * pointsMultiplier
+  const pointsEarned = Math.round(basePoints * 100 * speedFactor * totalMultiplier)
 
-  return { pointsEarned, newStreak, multiplier }
+  return { pointsEarned, newStreak, multiplier: totalMultiplier }
 }
 
 export function isAnswerCorrect(
@@ -81,27 +87,56 @@ export function isAnswerCorrect(
         return subVal !== null && corrVal !== null && subVal === corrVal
       }
 
-      case 'fill': {
+      case 'fill':
+      case 'type_answer': {
         const sub = String(
           submitted?.text ??
             submitted?.value ??
             submitted?.answer ??
             (typeof submitted === 'string' ? submitted : '')
-        )
-          .trim()
-          .toLowerCase()
+        ).trim()
 
         if (!sub) return false
 
+        const caseSensitive = correct?.caseSensitive === true
+        const normalizedSub = caseSensitive ? sub : sub.toLowerCase()
+
         if (Array.isArray(correct?.validAnswers)) {
-          return correct.validAnswers.some((ans: any) => String(ans).trim().toLowerCase() === sub)
+          return correct.validAnswers.some((ans: any) => {
+            const normalizedAns = caseSensitive ? String(ans).trim() : String(ans).trim().toLowerCase()
+            return normalizedAns === normalizedSub
+          })
         }
 
-        const expected = String(correct?.text ?? correct?.validAnswer ?? correct?.answer ?? '')
-          .trim()
-          .toLowerCase()
+        const expected = String(correct?.text ?? correct?.validAnswer ?? correct?.answer ?? '').trim()
+        const normalizedExpected = caseSensitive ? expected : expected.toLowerCase()
 
-        return sub === expected
+        return normalizedSub === normalizedExpected
+      }
+
+      case 'slider': {
+        const value = typeof submitted?.value === 'number' ? submitted.value : Number(submitted?.value)
+        const correctValue = correct?.correctValue ?? correct?.value
+        const tolerance = correct?.tolerance ?? 1
+        if (Number.isNaN(value) || correctValue === undefined) return false
+        return Math.abs(value - correctValue) <= tolerance
+      }
+
+      case 'pin_drop': {
+        const subX = submitted?.x ?? submitted?.correctX
+        const subY = submitted?.y ?? submitted?.correctY
+        const corrX = correct?.correctX
+        const corrY = correct?.correctY
+        const tolerancePx = correct?.tolerancePx ?? 50
+        if (subX === undefined || subY === undefined || corrX === undefined || corrY === undefined)
+          return false
+        const dist = Math.sqrt((subX - corrX) ** 2 + (subY - corrY) ** 2)
+        return dist <= tolerancePx
+      }
+
+      case 'word_cloud': {
+        // Word cloud is non-competitive, always counts as "answered"
+        return true
       }
 
       case 'order': {
@@ -159,6 +194,11 @@ export function isAnswerCorrect(
         }
 
         return text.length >= 3
+      }
+
+      case 'slide': {
+        // Slides are informational, always "correct"
+        return true
       }
 
       default:

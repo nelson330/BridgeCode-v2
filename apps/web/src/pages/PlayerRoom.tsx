@@ -2,6 +2,7 @@ import type { ParticipantState, WsServerMessage } from '@shared/contracts/games'
 import {
   AlertTriangle,
   ArrowLeft,
+  BarChart3,
   CheckCircle2,
   Clock,
   Flame,
@@ -29,9 +30,9 @@ export function PlayerRoom() {
   const navigate = useNavigate()
 
   const [displayName, setDisplayName] = useState('')
-  const [status, setStatus] = useState<'connecting' | 'lobby' | 'active' | 'result' | 'finished'>(
-    'connecting'
-  )
+  const [status, setStatus] = useState<
+    'connecting' | 'lobby' | 'countdown' | 'active' | 'result' | 'scoreboard' | 'finished'
+  >('connecting')
   const [currentExercise, setCurrentExercise] = useState<any>(null)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [totalExercises, setTotalExercises] = useState(0)
@@ -43,6 +44,9 @@ export function PlayerRoom() {
   const [explanation, setExplanation] = useState<string | null>(null)
   const [podium, setPodium] = useState<ParticipantState[]>([])
   const [shakeTrigger, setShakeTrigger] = useState(0)
+  const [myRank, setMyRank] = useState<number | null>(null)
+  const [countdownValue, setCountdownValue] = useState(0)
+  const [leaderboard, setLeaderboard] = useState<ParticipantState[]>([])
 
   const socketRef = useRef<WebSocket | null>(null)
   const questionStartTime = useRef<number>(Date.now())
@@ -57,14 +61,12 @@ export function PlayerRoom() {
       return
     }
 
-    // Connect WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/api/ws/game`
     const ws = new WebSocket(wsUrl)
     socketRef.current = ws
 
     ws.onopen = () => {
-      // Send JOIN message
       const payload: any = {
         type: 'JOIN',
         pin,
@@ -96,6 +98,30 @@ export function PlayerRoom() {
             sound.playPowerup()
             break
 
+          case 'PRE_QUESTION_COUNTDOWN':
+            setStatus('countdown')
+            setExerciseIndex(msg.exerciseIndex)
+            setTotalExercises(msg.totalExercises)
+            setCountdownValue(msg.countdownSec)
+            setHasSubmitted(false)
+            setLastCorrect(null)
+            setExplanation(null)
+            break
+
+          case 'TIMER_TICK':
+            if (status === 'countdown') {
+              setCountdownValue(msg.remainingSec)
+              if (msg.remainingSec <= 3 && msg.remainingSec > 0) {
+                sound.playCountdownTick()
+              }
+            } else {
+              setRemainingSec(msg.remainingSec)
+              if (msg.remainingSec <= 5 && msg.remainingSec > 0) {
+                sound.playCountdownTick()
+              }
+            }
+            break
+
           case 'GAME_STARTED':
             setCurrentExercise(msg.currentExercise)
             setExerciseIndex(msg.exerciseIndex)
@@ -109,23 +135,20 @@ export function PlayerRoom() {
             sound.playPowerup()
             break
 
-          case 'TIMER_TICK':
-            setRemainingSec(msg.remainingSec)
-            if (msg.remainingSec <= 5 && msg.remainingSec > 0) {
-              sound.playCountdownTick()
-            }
-            break
-
           case 'EXERCISE_RESULT': {
             setStatus('result')
             setExplanation(msg.explanation || null)
 
-            // Find my score in leaderboard
             const me = msg.leaderboard.find((p) => p.displayName === savedName)
             if (me) {
               setMyScore(me.score)
               setMyStreak(me.streak)
               setLastCorrect(me.lastAnswerCorrect ?? false)
+
+              // Calculate rank
+              const sorted = [...msg.leaderboard].sort((a, b) => b.score - a.score)
+              const rank = sorted.findIndex((p) => p.displayName === savedName)
+              setMyRank(rank >= 0 ? rank + 1 : null)
 
               if (me.lastAnswerCorrect) {
                 sound.playCorrect()
@@ -137,6 +160,11 @@ export function PlayerRoom() {
             }
             break
           }
+
+          case 'SCOREBOARD':
+            setLeaderboard(msg.leaderboard)
+            setStatus('scoreboard')
+            break
 
           case 'GAME_FINISHED':
             setPodium(msg.podium)
@@ -163,7 +191,6 @@ export function PlayerRoom() {
       console.warn('WebSocket error in PlayerRoom:', err)
     }
 
-    // Anti-cheat window blur listener
     const handleBlur = () => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(
@@ -248,6 +275,29 @@ export function PlayerRoom() {
           </motion.div>
         )}
 
+        {/* Pre-question countdown */}
+        {status === 'countdown' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center space-y-6 py-12"
+          >
+            <div className="text-xs font-bold uppercase tracking-widest text-indigo-400">
+              Pregunta {exerciseIndex + 1} de {totalExercises}
+            </div>
+            <motion.div
+              key={countdownValue}
+              initial={{ scale: 2, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              className="font-display font-black text-8xl text-white"
+            >
+              {countdownValue}
+            </motion.div>
+            <p className="text-slate-400 text-sm font-bold">Prepárate para responder...</p>
+          </motion.div>
+        )}
+
         {status === 'active' && currentExercise && (
           <div className="space-y-6">
             {/* Timer and Progress */}
@@ -261,14 +311,19 @@ export function PlayerRoom() {
               </div>
             </div>
 
-            {/* Question Prompt with Markdown */}
+            {/* Question Prompt */}
             <div className="p-5 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 text-center shadow-xl">
               <div className="font-display font-bold text-lg sm:text-xl text-white leading-relaxed">
                 <MarkdownText content={currentExercise.prompt} />
               </div>
+              {currentExercise.pointsMultiplier > 1 && (
+                <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+                  <Sparkles className="w-3 h-3" />×{currentExercise.pointsMultiplier} Puntos
+                </div>
+              )}
             </div>
 
-            {/* Big Touch Answer Buttons */}
+            {/* Answer Controls */}
             <AnswerControls
               exerciseType={currentExercise.type}
               options={
@@ -320,6 +375,13 @@ export function PlayerRoom() {
                 </>
               )}
 
+              {myRank && (
+                <div className="text-sm text-slate-300">
+                  Estás en el puesto{' '}
+                  <span className="font-display font-black text-indigo-400">#{myRank}</span>
+                </div>
+              )}
+
               {explanation && (
                 <div className="mt-4 p-4 rounded-xl bg-black/40 text-xs text-left border border-white/10 text-slate-200">
                   <span className="font-bold text-white flex items-center gap-1.5 mb-1.5">
@@ -330,6 +392,51 @@ export function PlayerRoom() {
               )}
             </motion.div>
           </ShakeFeedback>
+        )}
+
+        {/* Scoreboard between questions */}
+        {status === 'scoreboard' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4 py-6"
+          >
+            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 text-center flex items-center justify-center gap-1.5">
+              <Trophy className="w-4 h-4" />
+              Clasificación
+            </h3>
+            <div className="space-y-2">
+              {leaderboard.slice(0, 5).map((p, idx) => (
+                <motion.div
+                  key={p.displayName}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.08 }}
+                  className={`flex items-center gap-3 p-3 rounded-xl border ${
+                    p.displayName === displayName
+                      ? 'bg-indigo-500/10 border-indigo-500/30'
+                      : 'bg-slate-900/80 border-slate-800'
+                  }`}
+                >
+                  <span className="w-6 text-center font-display font-black text-sm text-slate-400">
+                    {idx + 1}
+                  </span>
+                  <span
+                    className={`flex-1 font-bold text-sm truncate ${
+                      p.displayName === displayName ? 'text-indigo-300' : 'text-white'
+                    }`}
+                  >
+                    {p.displayName}
+                    {p.displayName === displayName && (
+                      <span className="text-[10px] text-indigo-400 ml-1">(Tú)</span>
+                    )}
+                  </span>
+                  <span className="font-display font-black text-indigo-400 text-sm">{p.score}</span>
+                </motion.div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 text-center pt-2">Esperando siguiente pregunta...</p>
+          </motion.div>
         )}
 
         {status === 'finished' && (

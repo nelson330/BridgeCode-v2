@@ -163,8 +163,8 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
     expect(selectedIdx).toBeGreaterThanOrEqual(0)
     expect(selectedIdx).toBeLessThanOrEqual(1)
 
-    // 3. Start game
-    room.startGame()
+    // 3. Start game (skip countdown for test speed)
+    room.startGame(true)
     expect(room.status).toBe('active')
     expect(room.currentExerciseIndex).toBe(0)
 
@@ -357,8 +357,8 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
     expect(latestHostParticipantMsg.participants.length).toBe(1)
     expect(latestHostParticipantMsg.participants[0].displayName).toBe('Sofía García')
 
-    // 3. Teacher starts the game
-    room.startGame()
+    // 3. Teacher starts the game (skip countdown for test speed)
+    room.startGame(true)
     expect(room.status).toBe('active')
 
     // Both Host and Student receive GAME_STARTED

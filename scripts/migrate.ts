@@ -84,6 +84,7 @@ export async function runMigrations() {
       points INTEGER NOT NULL DEFAULT 1,
       time_sec INTEGER NOT NULL DEFAULT 30,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      points_multiplier INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
       updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
     );
@@ -287,6 +288,13 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs(actor_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_ai_jobs_status ON ai_jobs(status);
   `)
+
+  // Safe column additions for existing databases (ALTER TABLE ADD COLUMN is idempotent-safe with try/catch)
+  try {
+    sqlite.exec('ALTER TABLE exercises ADD COLUMN points_multiplier INTEGER NOT NULL DEFAULT 1')
+  } catch {
+    // Column already exists
+  }
 
   logger.info('✅ Database migrations applied successfully.')
 }

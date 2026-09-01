@@ -9,10 +9,13 @@ import {
   Lightbulb,
   Link2,
   ListOrdered,
+  MapPin,
   MessageSquareQuote,
   PenTool,
+  SlidersHorizontal,
   Square,
   Triangle,
+  Type,
   XCircle,
 } from 'lucide-react'
 import { motion } from 'motion/react'
@@ -33,6 +36,7 @@ interface QuestionDisplayProps {
     explanation?: string | null
     points?: number
     timeSec?: number
+    pointsMultiplier?: number
   }
   isLocalMode?: boolean
   isRevealed?: boolean
@@ -66,6 +70,21 @@ const OPTION_STYLES = [
   },
 ]
 
+const TYPE_LABELS: Record<string, { label: string; icon: typeof HelpCircle }> = {
+  mc: { label: 'OPCIÓN MÚLTIPLE', icon: HelpCircle },
+  tf: { label: 'VERDADERO / FALSO', icon: HelpCircle },
+  fill: { label: 'RELLENAR ESPACIO', icon: Keyboard },
+  order: { label: 'ORDENAR SECUENCIA', icon: ListOrdered },
+  match: { label: 'EMPAREJAR CONCEPTOS', icon: Link2 },
+  open: { label: 'PREGUNTA ABIERTA', icon: PenTool },
+  short: { label: 'RESPUESTA CORTA', icon: PenTool },
+  type_answer: { label: 'RESPUESTA EXACTA', icon: Type },
+  slider: { label: 'VALOR NUMÉRICO', icon: SlidersHorizontal },
+  pin_drop: { label: 'MARCAR EN IMAGEN', icon: MapPin },
+  word_cloud: { label: 'NUBE DE PALABRAS', icon: MessageSquareQuote },
+  slide: { label: 'INFORMATIVO', icon: Lightbulb },
+}
+
 export function QuestionDisplay({
   exercise,
   isLocalMode = false,
@@ -75,7 +94,6 @@ export function QuestionDisplay({
   const [selectedLocalIndex, setSelectedLocalIndex] = useState<number | null>(null)
   const [revealedLocal, setRevealedLocal] = useState(false)
 
-  // Parse options & correct answer
   let options: any[] = []
   try {
     if (exercise.optionsJson) {
@@ -120,6 +138,8 @@ export function QuestionDisplay({
   }
 
   const showResult = isRevealed || revealedLocal
+  const typeInfo = TYPE_LABELS[exercise.type] || { label: 'PREGUNTA', icon: HelpCircle }
+  const TypeIcon = typeInfo.icon
 
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
@@ -130,40 +150,31 @@ export function QuestionDisplay({
         className="rounded-3xl bg-slate-900/90 border-2 border-indigo-500/30 p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-4 min-h-[120px] flex flex-col justify-center"
       >
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider mx-auto">
-          <HelpCircle className="w-4 h-4" />
-          {exercise.type === 'mc'
-            ? 'OPCIÓN MÚLTIPLE'
-            : exercise.type === 'tf'
-              ? 'VERDADERO / FALSO'
-              : exercise.type === 'fill'
-                ? 'RELLENAR ESPACIO'
-                : exercise.type === 'order'
-                  ? 'ORDENAR SECUENCIA'
-                  : exercise.type === 'match'
-                    ? 'EMPAREJAR CONCEPTOS'
-                    : 'PREGUNTA ABIERTA'}{' '}
-          • {exercise.points || 1} Pts
+          <TypeIcon className="w-4 h-4" />
+          {typeInfo.label} • {exercise.points || 1} Pts
+          {exercise.pointsMultiplier && exercise.pointsMultiplier > 1 && (
+            <span className="text-amber-400">×{exercise.pointsMultiplier}</span>
+          )}
         </div>
 
         <div className="font-display font-black text-xl sm:text-2xl lg:text-3xl text-white tracking-tight leading-relaxed max-w-3xl mx-auto">
           <MarkdownText content={exercise.prompt} />
         </div>
 
-        {exercise.mediaUrl && (
+        {exercise.mediaUrl && exercise.type !== 'pin_drop' && (
           <div className="mt-4 max-h-64 overflow-hidden rounded-2xl border border-slate-800 flex justify-center">
             <img src={exercise.mediaUrl} alt="Material multimedia" className="object-cover h-full" />
           </div>
         )}
       </motion.div>
 
-      {/* 1. Multiple Choice & True/False Options Grid */}
+      {/* MC & TF Options Grid */}
       {(exercise.type === 'mc' || exercise.type === 'tf') && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {options.map((option, index) => {
             const style = OPTION_STYLES[index % OPTION_STYLES.length]
             const Icon = style?.icon || Circle
 
-            // Correctness check
             let isOptionCorrect = false
             if (exercise.type === 'mc') {
               isOptionCorrect = correctAnswer?.correctIndex === index
@@ -190,17 +201,14 @@ export function QuestionDisplay({
                     : `${style?.bg} ${style?.pattern}`
                 } ${isLocalMode && !showResult ? 'cursor-pointer' : 'cursor-default'}`}
               >
-                {/* Shape / Label Badge */}
                 <div className="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center shrink-0 border border-white/20">
                   <Icon className="w-6 h-6 text-white" />
                 </div>
 
-                {/* Option Text with Markdown */}
                 <div className="flex-1 text-base sm:text-lg md:text-xl drop-shadow-md leading-snug">
                   <MarkdownText content={option} />
                 </div>
 
-                {/* Reveal Status Icon */}
                 {showResult && (
                   <div className="shrink-0">
                     {isOptionCorrect ? (
@@ -216,7 +224,7 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {/* 2. Fill in the Blank (Rellenar Hueco) */}
+      {/* Fill in the Blank */}
       {exercise.type === 'fill' && (
         <div className="space-y-4">
           {!showResult ? (
@@ -229,9 +237,6 @@ export function QuestionDisplay({
                 <Keyboard className="w-6 h-6 animate-pulse text-indigo-400" />
                 <span>Escribe la palabra o término que falta en tu pantalla</span>
               </div>
-              <p className="text-xs text-slate-400">
-                Los alumnos deben ingresar la respuesta exacta en sus dispositivos móviles.
-              </p>
             </motion.div>
           ) : (
             <motion.div
@@ -253,7 +258,118 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {/* 3. Order Sequence (Ordenar Pasos) */}
+      {/* Type Answer */}
+      {exercise.type === 'type_answer' && (
+        <div className="space-y-4">
+          {!showResult ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+            >
+              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
+                <Type className="w-6 h-6 animate-pulse text-indigo-400" />
+                <span>Escribe la respuesta exacta en tu dispositivo</span>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
+            >
+              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Respuesta Correcta</span>
+              </div>
+              <div className="font-display font-black text-2xl sm:text-3xl text-white">
+                {Array.isArray(correctAnswer?.validAnswers)
+                  ? correctAnswer.validAnswers.join('  •  ')
+                  : correctAnswer?.text || correctAnswer?.validAnswer || 'Respuesta'}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      {/* Slider */}
+      {exercise.type === 'slider' && (
+        <div className="space-y-4">
+          {!showResult ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+            >
+              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
+                <SlidersHorizontal className="w-6 h-6 animate-pulse text-indigo-400" />
+                <span>Ajusta el valor en tu dispositivo</span>
+              </div>
+              {correctAnswer && (
+                <p className="text-xs text-slate-400">
+                  Rango: {correctAnswer.min ?? 0} – {correctAnswer.max ?? 100}
+                </p>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
+            >
+              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Valor Correcto</span>
+              </div>
+              <div className="font-display font-black text-5xl text-white">
+                {correctAnswer?.correctValue ?? correctAnswer?.value ?? '?'}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      {/* Pin Drop */}
+      {exercise.type === 'pin_drop' && (
+        <div className="space-y-4">
+          <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700">
+            {exercise.mediaUrl ? (
+              <img src={exercise.mediaUrl} alt="Imagen" className="w-full h-auto" />
+            ) : (
+              <div className="w-full h-64 bg-slate-800 flex items-center justify-center text-slate-500">
+                Imagen no disponible
+              </div>
+            )}
+            {showResult && correctAnswer && (
+              <div
+                className="absolute w-6 h-6 -ml-3 -mt-6"
+                style={{ left: correctAnswer.correctX, top: correctAnswer.correctY }}
+              >
+                <MapPin className="w-6 h-6 text-emerald-400 drop-shadow-lg" fill="currentColor" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Word Cloud */}
+      {exercise.type === 'word_cloud' && (
+        <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+          >
+            <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
+              <MessageSquareQuote className="w-6 h-6 animate-pulse text-indigo-400" />
+              <span>Escribe una palabra o concepto clave</span>
+            </div>
+            <p className="text-xs text-slate-400">Las palabras de todos se mostrarán como nube</p>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Order Sequence */}
       {exercise.type === 'order' && (
         <div className="space-y-4">
           <div className="text-center">
@@ -272,7 +388,6 @@ export function QuestionDisplay({
                   ? correctAnswer.order
                   : rawItems.map((_, i) => i)
 
-              // When revealed, show sorted by correctOrder; when solving, show raw order
               const displayList = showResult
                 ? correctOrder.map((idx, orderPos) => ({
                     item: rawItems[idx] || `Paso ${idx + 1}`,
@@ -312,7 +427,7 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {/* 4. Match Concepts (Emparejar) */}
+      {/* Match Concepts */}
       {exercise.type === 'match' && (
         <div className="space-y-4">
           <div className="text-center">
@@ -362,7 +477,7 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {/* 5. Open / Short Response (Pregunta Abierta) */}
+      {/* Open / Short Response */}
       {(exercise.type === 'open' || exercise.type === 'short') && (
         <div className="space-y-4">
           {!showResult ? (
@@ -375,9 +490,6 @@ export function QuestionDisplay({
                 <PenTool className="w-6 h-6 animate-pulse text-indigo-400" />
                 <span>Redacta tu respuesta en la pantalla de tu dispositivo</span>
               </div>
-              <p className="text-xs text-slate-400">
-                Los alumnos deben escribir una respuesta reflexiva fundamentada.
-              </p>
             </motion.div>
           ) : (
             <motion.div
@@ -403,7 +515,7 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {/* Explanation Banner on Reveal */}
+      {/* Explanation Banner */}
       {showResult && exercise.explanation && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const GameModeSchema = z.enum(['trivia', 'roulette', 'battle', 'race'])
+export const GameModeSchema = z.enum(['trivia', 'roulette', 'battle', 'race', 'teams'])
 export type GameMode = z.infer<typeof GameModeSchema>
 
 export const SessionStatusSchema = z.enum(['lobby', 'active', 'finished', 'closed'])
@@ -103,8 +103,52 @@ export const WsServerMessageSchema = z.discriminatedUnion('type', [
     selectedParticipant: z.string(),
   }),
   z.object({
+    type: z.literal('PRE_QUESTION_COUNTDOWN'),
+    exerciseIndex: z.number(),
+    totalExercises: z.number(),
+    countdownSec: z.number(),
+  }),
+  z.object({
+    type: z.literal('ANSWER_DISTRIBUTION'),
+    exerciseIndex: z.number(),
+    distribution: z.array(
+      z.object({
+        optionIndex: z.number(),
+        count: z.number(),
+        label: z.string().optional(),
+      })
+    ),
+    correctCount: z.number(),
+    incorrectCount: z.number(),
+    totalCount: z.number(),
+  }),
+  z.object({
+    type: z.literal('QUESTION_STATS'),
+    exerciseIndex: z.number(),
+    accuracyPercent: z.number(),
+    correctCount: z.number(),
+    totalCount: z.number(),
+    avgLatencyMs: z.number(),
+  }),
+  z.object({
+    type: z.literal('SCOREBOARD'),
+    leaderboard: z.array(ParticipantStateSchema),
+    exerciseIndex: z.number(),
+  }),
+  z.object({
     type: z.literal('GAME_FINISHED'),
     podium: z.array(ParticipantStateSchema),
+    questionStats: z
+      .array(
+        z.object({
+          exerciseIndex: z.number(),
+          accuracyPercent: z.number(),
+          correctCount: z.number(),
+          totalCount: z.number(),
+          avgLatencyMs: z.number(),
+        })
+      )
+      .optional(),
   }),
   z.object({
     type: z.literal('ERROR'),

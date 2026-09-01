@@ -91,7 +91,23 @@ export const exercises = sqliteTable('exercises', {
   lessonId: text('lesson_id')
     .notNull()
     .references(() => lessons.id, { onDelete: 'cascade' }),
-  type: text('type', { enum: ['mc', 'tf', 'fill', 'order', 'match', 'open', 'audio', 'image'] }).notNull(),
+  type: text('type', {
+    enum: [
+      'mc',
+      'tf',
+      'fill',
+      'order',
+      'match',
+      'open',
+      'audio',
+      'image',
+      'type_answer',
+      'slider',
+      'pin_drop',
+      'word_cloud',
+      'slide',
+    ],
+  }).notNull(),
   prompt: text('prompt').notNull(),
   mediaUrl: text('media_url'),
   optionsJson: text('options_json'),
@@ -100,6 +116,7 @@ export const exercises = sqliteTable('exercises', {
   points: integer('points').notNull().default(1),
   timeSec: integer('time_sec').notNull().default(30),
   sortOrder: integer('sort_order').notNull().default(0),
+  pointsMultiplier: integer('points_multiplier').notNull().default(1),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(strftime('%s', 'now'))`),
 })
@@ -119,7 +136,7 @@ export const liveSessions = sqliteTable('live_sessions', {
   status: text('status', { enum: ['lobby', 'active', 'finished', 'closed'] })
     .notNull()
     .default('lobby'),
-  mode: text('mode', { enum: ['trivia', 'roulette', 'battle', 'race'] })
+  mode: text('mode', { enum: ['trivia', 'roulette', 'battle', 'race', 'teams'] })
     .notNull()
     .default('trivia'),
   stateJson: text('state_json'),

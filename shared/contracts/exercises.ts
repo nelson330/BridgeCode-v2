@@ -1,6 +1,20 @@
 import { z } from 'zod'
 
-export const ExerciseTypeSchema = z.enum(['mc', 'tf', 'fill', 'order', 'match', 'open', 'audio', 'image'])
+export const ExerciseTypeSchema = z.enum([
+  'mc',
+  'tf',
+  'fill',
+  'order',
+  'match',
+  'open',
+  'audio',
+  'image',
+  'type_answer',
+  'slider',
+  'pin_drop',
+  'word_cloud',
+  'slide',
+])
 export type ExerciseType = z.infer<typeof ExerciseTypeSchema>
 
 export const ExerciseCreateSchema = z.object({
@@ -13,6 +27,7 @@ export const ExerciseCreateSchema = z.object({
   points: z.number().int().min(1).max(100).default(1),
   timeSec: z.number().int().min(5).max(300).default(30),
   sortOrder: z.number().int().default(0),
+  pointsMultiplier: z.number().int().min(1).max(5).default(1),
 })
 export type ExerciseCreate = z.infer<typeof ExerciseCreateSchema>
 
@@ -29,6 +44,7 @@ export const ExerciseBatchItemSchema = z.object({
   points: z.number().int().min(1).max(100).default(1),
   timeSec: z.number().int().min(5).max(300).default(30),
   sortOrder: z.number().int().default(0),
+  pointsMultiplier: z.number().int().min(1).max(5).default(1),
 })
 export type ExerciseBatchItem = z.infer<typeof ExerciseBatchItemSchema>
 

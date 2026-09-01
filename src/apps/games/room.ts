@@ -21,7 +21,18 @@ interface Participant {
   hasAnswered: boolean
   lastAnswerCorrect?: boolean | null
   lastSubmitTime: number
+  lastLatencyMs: number
 }
+
+interface QuestionStat {
+  exerciseIndex: number
+  correctCount: number
+  totalCount: number
+  totalLatencyMs: number
+  distribution: Map<number, number>
+}
+
+const PRE_QUESTION_SEC = 5
 
 export class GameRoom {
   public sessionId: string
@@ -34,6 +45,8 @@ export class GameRoom {
   public participants = new Map<string, Participant>()
   public hostSockets = new Set<ClientSocket>()
   private timerInterval: any = null
+  private questionStats: QuestionStat[] = []
+  private currentQuestionStat: QuestionStat | null = null
 
   constructor(sessionId: string, pin: string, mode: GameMode, exercises: any[]) {
     this.sessionId = sessionId
@@ -44,8 +57,6 @@ export class GameRoom {
 
   public broadcast(msg: WsServerMessage) {
     const payload = JSON.stringify(msg)
-
-    // Broadcast to player participants
     for (const participant of this.participants.values()) {
       try {
         participant.socket.send(payload)
@@ -53,8 +64,6 @@ export class GameRoom {
         // client might have disconnected
       }
     }
-
-    // Broadcast to host observers (Datashow projectors)
     for (const host of this.hostSockets) {
       try {
         host.send(payload)
@@ -66,15 +75,12 @@ export class GameRoom {
 
   public addHostSocket(socket: ClientSocket) {
     this.hostSockets.add(socket)
-
-    // Immediately send current participant list and status to host
     socket.send(
       JSON.stringify({
         type: 'PARTICIPANT_LIST',
         participants: this.getParticipantsState(),
       })
     )
-
     socket.send(
       JSON.stringify({
         type: 'ANSWER_STATS',
@@ -102,10 +108,25 @@ export class GameRoom {
       .sort((a, b) => b.score - a.score)
   }
 
+  public getTeamScores(): Array<{ team: string; score: number }> {
+    const teamMap = new Map<string, number>()
+    for (const p of this.participants.values()) {
+      if (p.team) {
+        teamMap.set(p.team, (teamMap.get(p.team) || 0) + p.score)
+      }
+    }
+    return Array.from(teamMap.entries())
+      .map(([team, score]) => ({ team, score }))
+      .sort((a, b) => b.score - a.score)
+  }
+
   public addParticipant(socket: ClientSocket, displayName: string, userId?: string): string {
     const participantId = `p_${nanoid(8)}`
     const teams: ('red' | 'blue' | 'green' | 'yellow')[] = ['red', 'blue', 'green', 'yellow']
-    const team = this.mode === 'battle' ? teams[this.participants.size % teams.length] : undefined
+    const team =
+      this.mode === 'battle' || this.mode === 'teams'
+        ? teams[this.participants.size % teams.length]
+        : undefined
 
     const participant: Participant = {
       id: participantId,
@@ -117,6 +138,7 @@ export class GameRoom {
       team,
       hasAnswered: false,
       lastSubmitTime: 0,
+      lastLatencyMs: 0,
     }
 
     this.participants.set(participantId, participant)
@@ -131,10 +153,10 @@ export class GameRoom {
           optionsJson: currentEx.optionsJson,
           points: currentEx.points,
           timeSec: currentEx.timeSec,
+          pointsMultiplier: currentEx.pointsMultiplier,
         }
       : undefined
 
-    // Send ROOM_JOINED with current exercise if session is already active
     socket.send(
       JSON.stringify({
         type: 'ROOM_JOINED',
@@ -154,7 +176,6 @@ export class GameRoom {
       })
     )
 
-    // Broadcast updated participant list to all (including Host Datashow)
     this.broadcast({
       type: 'PARTICIPANT_LIST',
       participants: this.getParticipantsState(),
@@ -182,10 +203,63 @@ export class GameRoom {
     })
   }
 
-  public startGame() {
+  public startGame(skipCountdown = false) {
     this.status = 'active'
     this.currentExerciseIndex = 0
-    this.loadExercise(0)
+    this.questionStats = []
+    if (skipCountdown) {
+      this.loadExercise(0)
+    } else {
+      this.startPreQuestionCountdown(0)
+    }
+  }
+
+  private startPreQuestionCountdown(index: number) {
+    if (index >= this.exercises.length) {
+      this.finishGame()
+      return
+    }
+
+    this.currentExerciseIndex = index
+
+    // Reset answered flags
+    for (const p of this.participants.values()) {
+      p.hasAnswered = false
+      p.lastAnswerCorrect = null
+    }
+
+    // Initialize question stat
+    this.currentQuestionStat = {
+      exerciseIndex: index,
+      correctCount: 0,
+      totalCount: 0,
+      totalLatencyMs: 0,
+      distribution: new Map(),
+    }
+
+    // Send pre-question countdown
+    this.broadcast({
+      type: 'PRE_QUESTION_COUNTDOWN',
+      exerciseIndex: index,
+      totalExercises: this.exercises.length,
+      countdownSec: PRE_QUESTION_SEC,
+    })
+
+    // After countdown, load the exercise
+    if (this.timerInterval) clearInterval(this.timerInterval)
+    let countdown = PRE_QUESTION_SEC
+    this.timerInterval = setInterval(() => {
+      countdown -= 1
+      this.broadcast({
+        type: 'TIMER_TICK',
+        remainingSec: countdown,
+      })
+
+      if (countdown <= 0) {
+        clearInterval(this.timerInterval)
+        this.loadExercise(index)
+      }
+    }, 1000)
   }
 
   public loadExercise(index: number) {
@@ -213,6 +287,7 @@ export class GameRoom {
       optionsJson: exercise.optionsJson,
       points: exercise.points,
       timeSec: exercise.timeSec,
+      pointsMultiplier: exercise.pointsMultiplier,
     }
 
     this.broadcast({
@@ -251,23 +326,57 @@ export class GameRoom {
     const now = Date.now()
     if (now - participant.lastSubmitTime < 100) return // Rate limit
     participant.lastSubmitTime = now
+    participant.lastLatencyMs = latencyMs
 
     const currentEx = this.exercises[this.currentExerciseIndex]
     if (!currentEx) return
 
     const correct = isAnswerCorrect(currentEx.type, answerJson, currentEx.answerJson)
+    const multiplier = currentEx.pointsMultiplier || 1
     const { pointsEarned, newStreak } = calculateScore(
       currentEx.points,
       currentEx.timeSec,
       latencyMs,
       participant.streak,
-      correct
+      correct,
+      this.mode === 'race' ? 'race' : 'classic',
+      multiplier
     )
 
     participant.hasAnswered = true
     participant.lastAnswerCorrect = correct
     participant.score += pointsEarned
     participant.streak = newStreak
+
+    // Track question stats
+    if (this.currentQuestionStat) {
+      this.currentQuestionStat.totalCount += 1
+      this.currentQuestionStat.totalLatencyMs += latencyMs
+      if (correct) {
+        this.currentQuestionStat.correctCount += 1
+      }
+
+      // Track distribution for mc/tf types
+      if (currentEx.type === 'mc' || currentEx.type === 'tf') {
+        try {
+          const submitted = JSON.parse(answerJson)
+          const idx =
+            typeof submitted?.correctIndex === 'number'
+              ? submitted.correctIndex
+              : typeof submitted?.selectedIndex === 'number'
+                ? submitted.selectedIndex
+                : -1
+          if (idx >= 0) {
+            this.currentQuestionStat.distribution.set(
+              idx,
+              (this.currentQuestionStat.distribution.get(idx) || 0) + 1
+            )
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
 
     // Anti-cheat check: Suspiciously fast response (< 300ms) with non-trivial exercise
     if (latencyMs < 300 && correct) {
@@ -296,7 +405,7 @@ export class GameRoom {
       kind: 'session',
     })
 
-    // Broadcast updated answer stats to Datashow host and participants
+    // Broadcast updated answer stats
     this.broadcast({
       type: 'ANSWER_STATS',
       totalParticipants: this.participants.size,
@@ -315,16 +424,78 @@ export class GameRoom {
     const currentEx = this.exercises[this.currentExerciseIndex]
     if (!currentEx) return
 
+    // Build answer distribution
+    const distribution: Array<{ optionIndex: number; count: number; label?: string }> = []
+    let options: string[] = []
+    try {
+      if (currentEx.optionsJson) {
+        options = JSON.parse(currentEx.optionsJson)
+      }
+    } catch {
+      // ignore
+    }
+
+    if (this.currentQuestionStat) {
+      for (const [idx, count] of this.currentQuestionStat.distribution.entries()) {
+        distribution.push({
+          optionIndex: idx,
+          count,
+          label: options[idx] || `Opción ${idx + 1}`,
+        })
+      }
+
+      // Send answer distribution
+      this.broadcast({
+        type: 'ANSWER_DISTRIBUTION',
+        exerciseIndex: this.currentExerciseIndex,
+        distribution,
+        correctCount: this.currentQuestionStat.correctCount,
+        incorrectCount: this.currentQuestionStat.totalCount - this.currentQuestionStat.correctCount,
+        totalCount: this.currentQuestionStat.totalCount,
+      })
+
+      // Send question stats
+      const avgLatencyMs =
+        this.currentQuestionStat.totalCount > 0
+          ? Math.round(this.currentQuestionStat.totalLatencyMs / this.currentQuestionStat.totalCount)
+          : 0
+      const accuracyPercent =
+        this.currentQuestionStat.totalCount > 0
+          ? Math.round((this.currentQuestionStat.correctCount / this.currentQuestionStat.totalCount) * 100)
+          : 0
+
+      this.broadcast({
+        type: 'QUESTION_STATS',
+        exerciseIndex: this.currentExerciseIndex,
+        accuracyPercent,
+        correctCount: this.currentQuestionStat.correctCount,
+        totalCount: this.currentQuestionStat.totalCount,
+        avgLatencyMs,
+      })
+
+      // Save to history
+      this.questionStats.push(this.currentQuestionStat)
+    }
+
     this.broadcast({
       type: 'EXERCISE_RESULT',
       correctAnswerJson: currentEx.answerJson,
       explanation: currentEx.explanation,
       leaderboard: this.getParticipantsState(),
     })
+
+    // After a delay, send scoreboard
+    setTimeout(() => {
+      this.broadcast({
+        type: 'SCOREBOARD',
+        leaderboard: this.getParticipantsState().slice(0, 5),
+        exerciseIndex: this.currentExerciseIndex,
+      })
+    }, 3000)
   }
 
   public nextExercise() {
-    this.loadExercise(this.currentExerciseIndex + 1)
+    this.startPreQuestionCountdown(this.currentExerciseIndex + 1)
   }
 
   public async recordFocusEvent(participantId: string, hasFocus: boolean) {
@@ -366,9 +537,19 @@ export class GameRoom {
 
     const podium = this.getParticipantsState().slice(0, 3)
 
+    // Build question stats summary
+    const questionStatsSummary = this.questionStats.map((qs) => ({
+      exerciseIndex: qs.exerciseIndex,
+      accuracyPercent: qs.totalCount > 0 ? Math.round((qs.correctCount / qs.totalCount) * 100) : 0,
+      correctCount: qs.correctCount,
+      totalCount: qs.totalCount,
+      avgLatencyMs: qs.totalCount > 0 ? Math.round(qs.totalLatencyMs / qs.totalCount) : 0,
+    }))
+
     this.broadcast({
       type: 'GAME_FINISHED',
       podium,
+      questionStats: questionStatsSummary,
     })
 
     const db = getDb()
@@ -376,7 +557,11 @@ export class GameRoom {
       .update(liveSessions)
       .set({
         status: 'finished',
-        rankSnapshotJson: JSON.stringify(podium),
+        rankSnapshotJson: JSON.stringify({
+          podium,
+          questionStats: questionStatsSummary,
+          teamScores: this.mode === 'teams' ? this.getTeamScores() : undefined,
+        }),
         endedAt: new Date(),
       })
       .where(eq(liveSessions.id, this.sessionId))

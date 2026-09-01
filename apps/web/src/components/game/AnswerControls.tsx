@@ -6,8 +6,10 @@ import {
   Diamond,
   ListOrdered,
   Loader2,
+  MapPin,
   PenTool,
   Send,
+  SlidersHorizontal,
   Square,
   Triangle,
 } from 'lucide-react'
@@ -25,6 +27,8 @@ interface AnswerControlsProps {
   hasSubmitted: boolean
   onSubmit: (answerJson: string) => void
   disabled?: boolean
+  mediaUrl?: string
+  answerJson?: string
 }
 
 const BUTTON_CONFIGS = [
@@ -65,12 +69,18 @@ export function AnswerControls({
   hasSubmitted,
   onSubmit,
   disabled = false,
+  mediaUrl,
+  answerJson,
 }: AnswerControlsProps) {
-  // State for Fill-in-the-blank & Open questions
   const [typedText, setTypedText] = useState('')
-
-  // State for Order questions
   const [orderItems, setOrderItems] = useState<Array<{ id: number; text: string }>>([])
+
+  // Slider state
+  const [sliderValue, setSliderValue] = useState(50)
+  const [sliderConfig, setSliderConfig] = useState({ min: 0, max: 100 })
+
+  // Pin drop state
+  const [pinPos, setPinPos] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     setTypedText('')
@@ -79,20 +89,32 @@ export function AnswerControls({
         options.map((opt, idx) => ({ id: idx, text: typeof opt === 'string' ? opt : JSON.stringify(opt) }))
       )
     }
-  }, [exerciseType, options])
+    if (exerciseType === 'slider' && answerJson) {
+      try {
+        const cfg = JSON.parse(answerJson)
+        const min = cfg.min ?? 0
+        const max = cfg.max ?? 100
+        setSliderConfig({ min, max })
+        setSliderValue(Math.round((min + max) / 2))
+      } catch {
+        // ignore
+      }
+    }
+    setPinPos(null)
+  }, [exerciseType, options, answerJson])
 
   const handleSelectMcTf = (index: number) => {
     if (hasSubmitted || disabled) return
     sound.playPowerup()
 
-    let answerJson = ''
+    let answerJsonStr = ''
     if (exerciseType === 'mc') {
-      answerJson = JSON.stringify({ correctIndex: index })
+      answerJsonStr = JSON.stringify({ correctIndex: index })
     } else if (exerciseType === 'tf') {
-      answerJson = JSON.stringify({ isTrue: index === 0 })
+      answerJsonStr = JSON.stringify({ isTrue: index === 0 })
     }
 
-    onSubmit(answerJson)
+    onSubmit(answerJsonStr)
   }
 
   const handleSubmitText = (e?: React.FormEvent) => {
@@ -100,8 +122,8 @@ export function AnswerControls({
     if (hasSubmitted || disabled || !typedText.trim()) return
     sound.playPowerup()
 
-    const answerJson = JSON.stringify({ text: typedText.trim() })
-    onSubmit(answerJson)
+    const answerJsonStr = JSON.stringify({ text: typedText.trim() })
+    onSubmit(answerJsonStr)
   }
 
   const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
@@ -124,8 +146,35 @@ export function AnswerControls({
     sound.playPowerup()
 
     const orderIndices = orderItems.map((item) => item.id)
-    const answerJson = JSON.stringify({ correctOrder: orderIndices })
-    onSubmit(answerJson)
+    const answerJsonStr = JSON.stringify({ correctOrder: orderIndices })
+    onSubmit(answerJsonStr)
+  }
+
+  const handleSubmitSlider = () => {
+    if (hasSubmitted || disabled) return
+    sound.playPowerup()
+    onSubmit(JSON.stringify({ value: sliderValue }))
+  }
+
+  const handlePinDrop = (e: React.MouseEvent<HTMLElement>) => {
+    if (hasSubmitted || disabled) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.round(e.clientX - rect.left)
+    const y = Math.round(e.clientY - rect.top)
+    setPinPos({ x, y })
+    sound.playPowerup()
+  }
+
+  const handleSubmitPin = () => {
+    if (hasSubmitted || disabled || !pinPos) return
+    sound.playPowerup()
+    onSubmit(JSON.stringify({ x: pinPos.x, y: pinPos.y }))
+  }
+
+  const handleSubmitWordCloud = () => {
+    if (hasSubmitted || disabled || !typedText.trim()) return
+    sound.playPowerup()
+    onSubmit(JSON.stringify({ text: typedText.trim() }))
   }
 
   if (hasSubmitted) {
@@ -147,7 +196,154 @@ export function AnswerControls({
     )
   }
 
-  // 1. Fill-in-the-blank Form
+  // Type Answer (similar to fill but mobile-optimized)
+  if (exerciseType === 'type_answer') {
+    return (
+      <form onSubmit={handleSubmitText} className="space-y-4 w-full">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-3">
+          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
+            Escribe la respuesta exacta:
+          </label>
+          <Input
+            type="text"
+            placeholder="Tu respuesta..."
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value)}
+            disabled={disabled}
+            className="text-center font-display font-bold text-xl py-3 text-white"
+            autoFocus
+          />
+        </div>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          disabled={disabled || !typedText.trim()}
+          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
+        >
+          <Send className="w-5 h-5" />
+          <span>Enviar Respuesta</span>
+        </Button>
+      </form>
+    )
+  }
+
+  // Slider
+  if (exerciseType === 'slider') {
+    return (
+      <div className="space-y-4 w-full">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4">
+          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center flex items-center justify-center gap-1.5">
+            <SlidersHorizontal className="w-4 h-4" />
+            Ajusta el valor:
+          </label>
+          <div className="text-center">
+            <span className="font-display font-black text-5xl text-white">{sliderValue}</span>
+          </div>
+          <input
+            type="range"
+            min={sliderConfig.min}
+            max={sliderConfig.max}
+            value={sliderValue}
+            onChange={(e) => setSliderValue(Number(e.target.value))}
+            disabled={disabled}
+            className="w-full h-3 rounded-full appearance-none bg-slate-700 cursor-pointer accent-indigo-500"
+          />
+          <div className="flex justify-between text-xs text-slate-500">
+            <span>{sliderConfig.min}</span>
+            <span>{sliderConfig.max}</span>
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleSubmitSlider}
+          disabled={disabled}
+          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
+        >
+          <Check className="w-5 h-5" />
+          <span>Confirmar Valor</span>
+        </Button>
+      </div>
+    )
+  }
+
+  // Pin Drop
+  if (exerciseType === 'pin_drop') {
+    return (
+      <div className="space-y-4 w-full">
+        <div className="text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+            <MapPin className="w-4 h-4" />
+            Toca la imagen para colocar tu marcador
+          </span>
+        </div>
+        <button
+          type="button"
+          className="relative rounded-2xl overflow-hidden border-2 border-slate-700 cursor-crosshair w-full text-left p-0"
+          onClick={handlePinDrop}
+        >
+          {mediaUrl ? (
+            <img src={mediaUrl} alt="Imagen para marcar" className="w-full h-auto" />
+          ) : (
+            <div className="w-full h-64 bg-slate-800 flex items-center justify-center text-slate-500">
+              Imagen no disponible
+            </div>
+          )}
+          {pinPos && (
+            <div className="absolute w-6 h-6 -ml-3 -mt-6" style={{ left: pinPos.x, top: pinPos.y }}>
+              <MapPin className="w-6 h-6 text-rose-500 drop-shadow-lg" fill="currentColor" />
+            </div>
+          )}
+        </button>
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleSubmitPin}
+          disabled={disabled || !pinPos}
+          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
+        >
+          <Check className="w-5 h-5" />
+          <span>Confirmar Ubicación</span>
+        </Button>
+      </div>
+    )
+  }
+
+  // Word Cloud
+  if (exerciseType === 'word_cloud') {
+    return (
+      <form onSubmit={handleSubmitWordCloud} className="space-y-4 w-full">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-3">
+          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
+            Escribe una palabra o concepto clave:
+          </label>
+          <Input
+            type="text"
+            placeholder="Tu palabra..."
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value.slice(0, 50))}
+            disabled={disabled}
+            className="text-center font-display font-bold text-xl py-3 text-white"
+            autoFocus
+          />
+          <p className="text-[10px] text-slate-500 text-center">Máximo 50 caracteres</p>
+        </div>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          disabled={disabled || !typedText.trim()}
+          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
+        >
+          <Send className="w-5 h-5" />
+          <span>Enviar Palabra</span>
+        </Button>
+      </form>
+    )
+  }
+
+  // Fill in the blank
   if (exerciseType === 'fill') {
     return (
       <form onSubmit={handleSubmitText} className="space-y-4 w-full">
@@ -179,7 +375,7 @@ export function AnswerControls({
     )
   }
 
-  // 2. Order Reordering List
+  // Order
   if (exerciseType === 'order') {
     return (
       <div className="space-y-4 w-full">
@@ -243,9 +439,8 @@ export function AnswerControls({
     )
   }
 
-  // 2.5 Match Pairs (left -> right matching)
+  // Match Pairs
   if (exerciseType === 'match') {
-    // options is an array of pairs like [{ left, right }, ...] or strings.
     const pairs: Array<{ left: string; right: string }> = (Array.isArray(options) ? options : []).map(
       (p: any) =>
         typeof p === 'object' && p !== null
@@ -253,7 +448,6 @@ export function AnswerControls({
           : { left: String(p), right: '' }
     )
 
-    // State: which left item is selected and which right items are matched to which left.
     const [leftIndex, setLeftIndex] = useState<number | null>(null)
     const [matches, setMatches] = useState<Record<number, number>>({})
 
@@ -278,7 +472,6 @@ export function AnswerControls({
     const handleSubmitMatch = () => {
       if (hasSubmitted || disabled) return
       sound.playPowerup()
-      // Build pairs array reflecting the matches from the original order.
       const submission = pairs.map((_p, i) => matches[i] ?? -1)
       onSubmit(JSON.stringify({ pairs: submission }))
     }
@@ -361,7 +554,7 @@ export function AnswerControls({
     )
   }
 
-  // 3. Open Question Response
+  // Open / Short
   if (exerciseType === 'open' || exerciseType === 'short') {
     return (
       <form onSubmit={handleSubmitText} className="space-y-4 w-full">
@@ -392,7 +585,7 @@ export function AnswerControls({
     )
   }
 
-  // 4. Default: Multiple Choice & True/False Touch Buttons
+  // Default: MC & TF
   const count = exerciseType === 'tf' ? 2 : Math.min(optionsCount, 4)
   const buttons = BUTTON_CONFIGS.slice(0, count)
 

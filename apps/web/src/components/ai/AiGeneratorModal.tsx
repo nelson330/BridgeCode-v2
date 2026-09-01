@@ -228,8 +228,11 @@ export function AiGeneratorModal({
                 { id: 'mc', label: 'Opción Múltiple' },
                 { id: 'tf', label: 'Verdadero / Falso' },
                 { id: 'fill', label: 'Rellenar Hueco' },
+                { id: 'type_answer', label: 'Respuesta Exacta' },
+                { id: 'slider', label: 'Slider Numérico' },
                 { id: 'order', label: 'Ordenar Secuencia' },
                 { id: 'match', label: 'Emparejar' },
+                { id: 'word_cloud', label: 'Nube de Palabras' },
               ].map((t) => {
                 const active = selectedTypes.includes(t.id)
                 return (

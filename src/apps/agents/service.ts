@@ -349,6 +349,18 @@ REGLAS PEDAGÓGICAS ESTRICTAS DE REDACCIÓN:
      "prompt": "Pregunta conceptual directa.",
      "optionsJson": null,
      "answerJson": "{\"sampleAnswer\": \"Explicación modelo\", \"keywords\": [\"palabra1\", \"palabra2\"]}"
+   - "type_answer" (Respuesta exacta escrita):
+     "prompt": "Pregunta que requiere escribir el término o cifra exacta.",
+     "optionsJson": null,
+     "answerJson": "{\"validAnswers\": [\"respuestaCorrecta\", \"sinonimo\"], \"caseSensitive\": false}"
+   - "slider" (Valor numérico con rango):
+     "prompt": "Pregunta que requiere estimar un valor numérico (fecha, porcentaje, medida).",
+     "optionsJson": null,
+     "answerJson": "{\"min\": 0, \"max\": 100, \"correctValue\": 42, \"tolerance\": 5}"
+   - "word_cloud" (Nube de palabras, sin puntuación):
+     "prompt": "Pregunta abierta para recopilar conceptos clave.",
+     "optionsJson": null,
+     "answerJson": "{\"sampleWords\": [\"concepto1\", \"concepto2\"]}"
 
 3. UTILIZA MARKDOWN enriquecido en enunciados (**negrita** para términos clave, \`código\` para fórmulas o variables).
 4. EXPLICACIÓN PEDAGÓGICA: Proporciona una explicación clara del concepto que enseñe y refuerce el aprendizaje.
@@ -363,7 +375,8 @@ Devuelve ÚNICAMENTE un JSON válido con la siguiente estructura exacta:
       "answerJson": "...",
       "explanation": "...",
       "points": 1,
-      "timeSec": 30
+      "timeSec": 30,
+      "pointsMultiplier": 1
     }
   ]
 }`

@@ -83,13 +83,25 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
 
     // Type Answer (case-insensitive by default)
     expect(
-      isAnswerCorrect('type_answer', '{"text": "Fotosíntesis"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+      isAnswerCorrect(
+        'type_answer',
+        '{"text": "Fotosíntesis"}',
+        '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}'
+      )
     ).toBe(true)
     expect(
-      isAnswerCorrect('type_answer', '{"text": "FOTOSÍNTESIS"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+      isAnswerCorrect(
+        'type_answer',
+        '{"text": "FOTOSÍNTESIS"}',
+        '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}'
+      )
     ).toBe(true)
     expect(
-      isAnswerCorrect('type_answer', '{"text": "Oxígeno"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+      isAnswerCorrect(
+        'type_answer',
+        '{"text": "Oxígeno"}',
+        '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}'
+      )
     ).toBe(false)
 
     // Slider (within tolerance)
@@ -98,12 +110,32 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
     expect(isAnswerCorrect('slider', '{"value": 50}', '{"correctValue": 42, "tolerance": 5}')).toBe(false)
 
     // Pin Drop (within tolerance pixels)
-    expect(isAnswerCorrect('pin_drop', '{"x": 100, "y": 100}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(true)
-    expect(isAnswerCorrect('pin_drop', '{"x": 120, "y": 130}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(true)
-    expect(isAnswerCorrect('pin_drop', '{"x": 200, "y": 200}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(false)
+    expect(
+      isAnswerCorrect(
+        'pin_drop',
+        '{"x": 100, "y": 100}',
+        '{"correctX": 100, "correctY": 100, "tolerancePx": 50}'
+      )
+    ).toBe(true)
+    expect(
+      isAnswerCorrect(
+        'pin_drop',
+        '{"x": 120, "y": 130}',
+        '{"correctX": 100, "correctY": 100, "tolerancePx": 50}'
+      )
+    ).toBe(true)
+    expect(
+      isAnswerCorrect(
+        'pin_drop',
+        '{"x": 200, "y": 200}',
+        '{"correctX": 100, "correctY": 100, "tolerancePx": 50}'
+      )
+    ).toBe(false)
 
     // Word Cloud (always true - non-competitive)
-    expect(isAnswerCorrect('word_cloud', '{"text": "célula"}', '{"sampleWords": ["célula", "mitocondria"]}')).toBe(true)
+    expect(
+      isAnswerCorrect('word_cloud', '{"text": "célula"}', '{"sampleWords": ["célula", "mitocondria"]}')
+    ).toBe(true)
 
     // Slide (always true - informational)
     expect(isAnswerCorrect('slide', '{}', '{"durationSec": 8}')).toBe(true)

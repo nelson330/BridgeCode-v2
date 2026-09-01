@@ -2,7 +2,16 @@ import type { HomeworkCreate, PracticeAnswer } from '@shared/contracts/homework'
 import { and, eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { getDb } from '../../core/db/client'
-import { answers, courseClasses, exercises, homework, lessons, progress } from '../../core/db/schema'
+import {
+  answers,
+  courseClasses,
+  exercises,
+  groupMembers,
+  homework,
+  lessons,
+  progress,
+  users,
+} from '../../core/db/schema'
 import { AppError } from '../../core/errors'
 import { calculateScore, isAnswerCorrect } from '../games/scoring'
 
@@ -84,6 +93,10 @@ export class HomeworkService {
 
   static async submitPracticeAnswer(userId: string, classId: string, lessonId: string, req: PracticeAnswer) {
     const db = getDb()
+
+    // Verify the student is enrolled in the class
+    await HomeworkService.assertClassMembership(userId, classId)
+
     const exercise = await db.select().from(exercises).where(eq(exercises.id, req.exerciseId)).limit(1)
     if (exercise.length === 0 || !exercise[0]) {
       throw AppError.notFound('Ejercicio no encontrado')
@@ -179,6 +192,9 @@ export class HomeworkService {
   static async completeReading(userId: string, classId: string, lessonId: string) {
     const db = getDb()
 
+    // Verify the student is enrolled in the class
+    await HomeworkService.assertClassMembership(userId, classId)
+
     // Check if reading was already confirmed previously by this student for this lesson
     const priorReading = await db
       .select()
@@ -215,7 +231,7 @@ export class HomeworkService {
       isCorrect: true,
       latencyMs: 10000,
       pointsEarned: 100,
-      kind: 'practice',
+      kind: 'reading',
     })
 
     const existingProgress = await db
@@ -242,6 +258,7 @@ export class HomeworkService {
 
   static async getStudentProgress(userId: string, classId: string) {
     const db = getDb()
+    await HomeworkService.assertClassMembership(userId, classId)
     const records = await db
       .select()
       .from(progress)
@@ -254,6 +271,42 @@ export class HomeworkService {
       totalExercisesCompleted,
       totalPoints,
       records,
+    }
+  }
+
+  /**
+   * Verify the user is allowed to interact with the given class.
+   * - Teacher: must own the class
+   * - Student: must be enrolled
+   * - Webmaster: always allowed
+   */
+  static async assertClassMembership(userId: string, classId: string): Promise<void> {
+    const db = getDb()
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+    if (user.length === 0 || !user[0]) {
+      throw AppError.unauthenticated('Debes iniciar sesión para continuar')
+    }
+
+    if (user[0].role === 'webmaster') return
+
+    if (user[0].role === 'teacher') {
+      const cls = await db
+        .select()
+        .from(courseClasses)
+        .where(and(eq(courseClasses.id, classId), eq(courseClasses.teacherId, userId)))
+        .limit(1)
+      if (cls.length > 0) return
+      throw AppError.forbidden('No tienes permisos sobre esta clase')
+    }
+
+    // Student
+    const member = await db
+      .select()
+      .from(groupMembers)
+      .where(and(eq(groupMembers.userId, userId), eq(groupMembers.classId, classId)))
+      .limit(1)
+    if (member.length === 0) {
+      throw AppError.forbidden('No estás inscrito en esta clase')
     }
   }
 }

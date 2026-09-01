@@ -65,14 +65,15 @@ export function PlayerRoom() {
 
     ws.onopen = () => {
       // Send JOIN message
-      ws.send(
-        JSON.stringify({
-          type: 'JOIN',
-          pin,
-          displayName: savedName,
-          userId: savedUserId,
-        })
-      )
+      const payload: any = {
+        type: 'JOIN',
+        pin,
+        displayName: savedName,
+      }
+      if (savedUserId) {
+        payload.userId = savedUserId
+      }
+      ws.send(JSON.stringify(payload))
     }
 
     ws.onmessage = (event) => {

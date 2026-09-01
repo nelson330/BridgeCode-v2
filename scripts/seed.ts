@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
+import { customAlphabet, nanoid } from 'nanoid'
 import { loadConfig } from '../src/core/config'
 import { getDb, initDb } from '../src/core/db/client'
 import {
@@ -23,6 +23,27 @@ import { hashPassword } from '../src/core/security/crypto'
 
 export async function runDatabaseSeed() {
   const db = getDb()
+  const isTest = process.env.NODE_ENV === 'test'
+
+  // Use deterministic, well-known passwords in tests so integration suites
+  // can login without parsing stdout. In production/development, generate
+  // strong readable passwords and log them once on first launch.
+  const generateReadablePassword = (label: string) => {
+    if (isTest) {
+      const defaults: Record<string, string> = {
+        admin: 'admin123',
+        docente: 'docente123',
+        alumno: 'alumno123',
+      }
+      return defaults[label] ?? `${label}-test`
+    }
+    const words = ['Astro', 'Cometa', 'Estrella', 'Luna', 'Rayo', 'Sol', 'Nova', 'Fenix', 'Titan', 'Atlas']
+    const word = words[Math.floor(Math.random() * words.length)]
+    const digits = customAlphabet('0123456789', 4)
+    const pass = `${word}-${label}-${digits()}`
+    console.log(`[seed] Generated password for ${label}: ${pass}`)
+    return pass
+  }
 
   // 1. Webmaster
   const existingWebmaster = await db.select().from(users).where(eq(users.username, 'webmaster')).limit(1)
@@ -30,7 +51,7 @@ export async function runDatabaseSeed() {
   let webmasterId = existingWebmaster[0]?.id
   if (!webmasterId) {
     webmasterId = 'usr_webmaster_01'
-    const webmasterPasswordHash = await hashPassword('admin123')
+    const webmasterPasswordHash = await hashPassword(generateReadablePassword('admin'))
     await db
       .insert(users)
       .values({
@@ -51,7 +72,7 @@ export async function runDatabaseSeed() {
   let teacherId = existingTeacher[0]?.id
   if (!teacherId) {
     teacherId = 'usr_docente_01'
-    const teacherPasswordHash = await hashPassword('docente123')
+    const teacherPasswordHash = await hashPassword(generateReadablePassword('docente'))
     await db
       .insert(users)
       .values({
@@ -91,7 +112,7 @@ export async function runDatabaseSeed() {
   let student1Id = existingSofia[0]?.id
   if (!student1Id) {
     student1Id = 'usr_sofia_01'
-    const studentPasswordHash = await hashPassword('alumno123')
+    const studentPasswordHash = await hashPassword(generateReadablePassword('alumno'))
     await db
       .insert(users)
       .values({
@@ -111,7 +132,7 @@ export async function runDatabaseSeed() {
   let student2Id = existingCarlos[0]?.id
   if (!student2Id) {
     student2Id = 'usr_carlos_02'
-    const studentPasswordHash = await hashPassword('alumno123')
+    const studentPasswordHash = await hashPassword(generateReadablePassword('alumno'))
     await db
       .insert(users)
       .values({
@@ -499,7 +520,16 @@ export async function runDatabaseSeed() {
 
 // Execute directly if run with `bun scripts/seed.ts`
 if (import.meta.main) {
-  loadConfig({ MODE: 'hosted' })
+  // Respect MODE from .env (or default to 'local' if not set).
+  // When run as `bun scripts/seed.ts hosted`, force hosted mode.
+  const argv = process.argv.slice(2)
+  if (argv.includes('hosted')) {
+    loadConfig({ MODE: 'hosted' })
+  } else if (argv.includes('local')) {
+    loadConfig({ MODE: 'local' })
+  } else {
+    loadConfig()
+  }
   initDb()
   runDatabaseSeed()
     .then(() => {

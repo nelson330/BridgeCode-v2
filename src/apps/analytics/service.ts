@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { getDb } from '../../core/db/client'
 import {
   answers,
@@ -57,20 +57,22 @@ export class AnalyticsService {
 
     const classExercises =
       lessonIds.length > 0
-        ? (await db.select().from(exercises)).filter((e) => lessonIds.includes(e.lessonId))
+        ? await db.select().from(exercises).where(inArray(exercises.lessonId, lessonIds))
         : []
 
     // 3. Class homework assignments
     const classHomework = await db.select().from(homework).where(eq(homework.classId, classId))
 
-    // 4. Answers for this class
+    // 4. Answers for this class (filtered via SQL)
     const allAnswers =
-      lessonIds.length > 0
-        ? (await db.select().from(answers)).filter((a) => lessonIds.includes(a.lessonId))
-        : []
+      lessonIds.length > 0 ? await db.select().from(answers).where(inArray(answers.lessonId, lessonIds)) : []
 
-    // 5. Anticheat events
-    const allAnticheat = await db.select().from(anticheatEvents)
+    // 5. Anticheat events for this class's students
+    const enrolledIds = enrolledStudents.map((s) => s.studentId)
+    const allAnticheat =
+      enrolledIds.length > 0
+        ? await db.select().from(anticheatEvents).where(inArray(anticheatEvents.userId, enrolledIds))
+        : []
 
     // 6. Calculate Student-by-Student Gradebook
     const studentGrades = enrolledStudents.map((st) => {
@@ -235,16 +237,31 @@ export class AnalyticsService {
         .where(eq(users.role, 'student'))
     }
 
-    const allAnswers = await db.select().from(answers)
+    // Filter answers via SQL using OR-compatible filter set
+    const studentIds = studentUsers.map((s) => s.id)
+    const allAnswers =
+      studentIds.length > 0
+        ? await db
+            .select()
+            .from(answers)
+            .where(
+              classId && classLessonIds.length === 0 && classSessionIds.length === 0
+                ? sql`1 = 0`
+                : classId
+                  ? and(
+                      inArray(answers.userId, studentIds),
+                      classLessonIds.length > 0 && classSessionIds.length > 0
+                        ? sql`(${answers.lessonId} IN ${classLessonIds} OR ${answers.sessionId} IN ${classSessionIds})`
+                        : classLessonIds.length > 0
+                          ? inArray(answers.lessonId, classLessonIds)
+                          : inArray(answers.sessionId, classSessionIds)
+                    )
+                  : inArray(answers.userId, studentIds)
+            )
+        : []
 
     const leaderboard = studentUsers.map((s) => {
-      const studentAns = allAnswers.filter((a) => {
-        if (a.userId !== s.id) return false
-        if (!classId) return true
-        const inLesson = a.lessonId && classLessonIds.includes(a.lessonId)
-        const inSession = a.sessionId && classSessionIds.includes(a.sessionId)
-        return inLesson || inSession
-      })
+      const studentAns = allAnswers.filter((a) => a.userId === s.id)
 
       const correctCount = studentAns.filter((a) => a.isCorrect).length
       const totalPoints = studentAns.reduce((sum, a) => sum + (a.pointsEarned || 0), 0)

@@ -49,6 +49,8 @@ export function StudentDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string>('')
   const [classLessons, setClassLessons] = useState<any[]>([])
   const [wallPosts, setWallPosts] = useState<any[]>([])
+  const [wallCommentsMap, setWallCommentsMap] = useState<Record<string, any[]>>({})
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
   const [newWallComment, setNewWallComment] = useState('')
 
   // Interactive Exercise Practice Modal (Quiz)
@@ -113,6 +115,30 @@ export function StudentDashboard() {
       .then((res) => setWallPosts(res?.posts || []))
       .catch(() => setWallPosts([]))
   }, [selectedClassId])
+
+  const loadWallComments = async (postId: string) => {
+    try {
+      const res = await apiFetch<{ comments?: any[] }>(`/api/wall/posts/${postId}/comments`)
+      setWallCommentsMap((prev) => ({ ...prev, [postId]: res?.comments || [] }))
+    } catch {
+      setWallCommentsMap((prev) => ({ ...prev, [postId]: [] }))
+    }
+  }
+
+  const togglePostExpanded = async (postId: string) => {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev)
+      if (next.has(postId)) {
+        next.delete(postId)
+      } else {
+        next.add(postId)
+        if (!wallCommentsMap[postId]) {
+          void loadWallComments(postId)
+        }
+      }
+      return next
+    })
+  }
 
   const handleStartHomeworkQuiz = async (hw: any) => {
     try {
@@ -233,8 +259,14 @@ export function StudentDashboard() {
       })
       sound.playCorrect()
       setNewWallComment('')
-      const res = await apiFetch<{ posts: any[] }>(`/api/classes/${selectedClassId}/wall/posts`)
-      setWallPosts(res.posts)
+      // Refresh both posts (to update commentCount) and comments (to show the new one)
+      const [postsRes, commentsRes] = await Promise.all([
+        apiFetch<{ posts: any[] }>(`/api/classes/${selectedClassId}/wall/posts`),
+        apiFetch<{ comments?: any[] }>(`/api/wall/posts/${postId}/comments`),
+      ])
+      setWallPosts(postsRes.posts)
+      setWallCommentsMap((prev) => ({ ...prev, [postId]: commentsRes?.comments || [] }))
+      setExpandedPosts((prev) => new Set([...prev, postId]))
     } catch (err: any) {
       alert(err.message)
     }
@@ -579,26 +611,41 @@ export function StudentDashboard() {
 
                 <p className="text-slate-200 text-sm leading-relaxed">{post.content}</p>
 
+                {/* Toggle comments */}
+                <button
+                  type="button"
+                  onClick={() => togglePostExpanded(post.id)}
+                  className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                >
+                  {expandedPosts.has(post.id)
+                    ? `Ocultar comentarios${wallCommentsMap[post.id]?.length ? ` (${wallCommentsMap[post.id]?.length})` : ''}`
+                    : `Ver comentarios${post.commentCount ? ` (${post.commentCount})` : ''}`}
+                </button>
+
                 {/* Comments List */}
-                {post.comments && post.comments.length > 0 && (
+                {expandedPosts.has(post.id) && wallCommentsMap[post.id] && (
                   <div className="space-y-2 pt-3 border-t border-slate-800/80">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Comentarios ({post.comments.length})
+                      Comentarios ({wallCommentsMap[post.id]?.length ?? 0})
                     </span>
-                    {post.comments.map((comm: any) => (
-                      <div
-                        key={comm.id}
-                        className="p-3 rounded-xl bg-slate-950 border border-slate-800/60 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-indigo-300">{comm.authorName}</span>
-                          <span className="text-[10px] text-slate-500">
-                            {new Date(comm.createdAt).toLocaleTimeString()}
-                          </span>
+                    {(wallCommentsMap[post.id] ?? []).length === 0 ? (
+                      <p className="text-[11px] text-slate-500 italic">Sé el primero en comentar.</p>
+                    ) : (
+                      (wallCommentsMap[post.id] ?? []).map((comm: any) => (
+                        <div
+                          key={comm.id}
+                          className="p-3 rounded-xl bg-slate-950 border border-slate-800/60 text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-indigo-300">{comm.authorName}</span>
+                            <span className="text-[10px] text-slate-500">
+                              {new Date(comm.createdAt).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-slate-200">{comm.content}</p>
                         </div>
-                        <p className="text-slate-200">{comm.content}</p>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 )}
 

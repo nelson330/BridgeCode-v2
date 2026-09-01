@@ -327,6 +327,23 @@ export class GameRoom {
     this.loadExercise(this.currentExerciseIndex + 1)
   }
 
+  public async recordFocusEvent(participantId: string, hasFocus: boolean) {
+    const participant = this.participants.get(participantId)
+    if (!participant || !participant.userId) return
+
+    const db = getDb()
+    await db.insert(anticheatEvents).values({
+      id: nanoid(),
+      sessionId: this.sessionId,
+      userId: participant.userId,
+      type: hasFocus ? 'FOCUS_GAINED' : 'FOCUS_LOST',
+      detailJson: JSON.stringify({
+        exerciseIndex: this.currentExerciseIndex,
+        timestamp: Date.now(),
+      }),
+    })
+  }
+
   public spinRoulette(): number {
     const participantList = Array.from(this.participants.values())
     if (participantList.length === 0) return 0

@@ -6,6 +6,7 @@ import { SocialService } from './service'
 export const socialRoutes = new Hono()
 
 socialRoutes.use('/classes/*', requireAuth())
+socialRoutes.use('/wall/*', requireAuth())
 
 socialRoutes.post('/classes/:classId/wall/posts', async (c) => {
   const user = c.get('user')
@@ -40,8 +41,9 @@ socialRoutes.post('/wall/posts/:postId/comments', async (c) => {
 })
 
 socialRoutes.get('/wall/posts/:postId/comments', async (c) => {
+  const user = c.get('user')
   const postId = c.req.param('postId')
-  const comments = await SocialService.listComments(postId)
+  const comments = await SocialService.listComments(user.id, postId)
   return c.json({ comments })
 })
 

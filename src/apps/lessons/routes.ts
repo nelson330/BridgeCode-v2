@@ -25,7 +25,7 @@ lessonRoutes.get('/groups/:classId/lessons', async (c) => {
   return c.json({ lessons: list })
 })
 
-lessonRoutes.get('/groups/:classId/lessons/:id', async (c) => {
+lessonRoutes.get('/groups/:classId/lessons/:id', requireAuth(), async (c) => {
   const user = c.get('user')
   const lessonId = c.req.param('id')
   const lesson = await LessonsService.getLesson(user.id, lessonId)
@@ -69,9 +69,10 @@ lessonRoutes.post('/groups/:classId/lessons/:id/publish', requireRole('teacher',
   return c.json(result)
 })
 
-lessonRoutes.get('/lessons/:id/exercises', async (c) => {
+lessonRoutes.get('/lessons/:id/exercises', requireAuth(), async (c) => {
+  const user = c.get('user')
   const lessonId = c.req.param('id')
-  const exercises = await LessonsService.getLessonExercises(lessonId)
+  const exercises = await LessonsService.getLessonExercises(user.id, lessonId)
   return c.json({ exercises })
 })
 

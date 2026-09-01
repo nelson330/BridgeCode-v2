@@ -3,7 +3,7 @@ import type { LessonCreate, LessonUpdate } from '@shared/contracts/lessons'
 import { and, asc, eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { getDb } from '../../core/db/client'
-import { auditLogs, courseClasses, exercises, lessons, users } from '../../core/db/schema'
+import { auditLogs, courseClasses, exercises, groupMembers, lessons, users } from '../../core/db/schema'
 import { AppError } from '../../core/errors'
 
 export class LessonsService {
@@ -61,25 +61,50 @@ export class LessonsService {
     }
 
     const foundUser = await db.select().from(users).where(eq(users.id, userId)).limit(1)
-    const isStudent = foundUser[0]?.role === 'student'
+    const role = foundUser[0]?.role
 
-    if (isStudent) {
-      return await db
-        .select()
-        .from(lessons)
-        .where(and(eq(lessons.classId, classId), eq(lessons.status, 'published')))
+    if (role === 'webmaster') {
+      return await db.select().from(lessons).where(eq(lessons.classId, classId))
     }
 
-    return await db.select().from(lessons).where(eq(lessons.classId, classId))
+    if (role === 'teacher') {
+      // Teachers can only see lessons of classes they own
+      const cls = await db
+        .select()
+        .from(courseClasses)
+        .where(and(eq(courseClasses.id, classId), eq(courseClasses.teacherId, userId)))
+        .limit(1)
+      if (cls.length === 0) {
+        throw AppError.forbidden('No tienes permisos sobre esta clase')
+      }
+      return await db.select().from(lessons).where(eq(lessons.classId, classId))
+    }
+
+    // Student (must be enrolled in class)
+    const member = await db
+      .select()
+      .from(groupMembers)
+      .where(and(eq(groupMembers.userId, userId), eq(groupMembers.classId, classId)))
+      .limit(1)
+    if (member.length === 0) {
+      throw AppError.forbidden('No estás inscrito en esta clase')
+    }
+
+    return await db
+      .select()
+      .from(lessons)
+      .where(and(eq(lessons.classId, classId), eq(lessons.status, 'published')))
   }
 
-  static async getLesson(_userId: string, lessonId: string) {
+  static async getLesson(userId: string | undefined, lessonId: string) {
     const db = getDb()
     const found = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1)
 
     if (found.length === 0 || !found[0]) {
       throw AppError.notFound('Lección no encontrada')
     }
+
+    await LessonsService.assertLessonAccess(userId, found[0])
 
     const exerciseList = await db
       .select()
@@ -325,14 +350,70 @@ export class LessonsService {
     return { success: true }
   }
 
-  static async getLessonExercises(lessonId: string) {
+  static async getLessonExercises(userId: string | undefined, lessonId: string) {
     const db = getDb()
+    const lesson = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1)
+    if (lesson.length === 0 || !lesson[0]) {
+      throw AppError.notFound('Lección no encontrada')
+    }
+    await LessonsService.assertLessonAccess(userId, lesson[0])
+
     const list = await db
       .select()
       .from(exercises)
       .where(eq(exercises.lessonId, lessonId))
       .orderBy(exercises.sortOrder)
     return list
+  }
+
+  /**
+   * Verify a user can read a lesson.
+   * - Webmaster: always
+   * - Teacher: must own the lesson's class
+   * - Student: must be enrolled in the lesson's class
+   * - Unauthenticated: only if lesson is published (treated as preview)
+   */
+  static async assertLessonAccess(
+    userId: string | undefined,
+    lesson: { classId: string; status: string }
+  ): Promise<void> {
+    const db = getDb()
+
+    if (!userId) {
+      if (lesson.status !== 'published') {
+        throw AppError.notFound('Lección no encontrada')
+      }
+      return
+    }
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+    if (user.length === 0 || !user[0]) {
+      throw AppError.unauthenticated('Debes iniciar sesión para continuar')
+    }
+
+    if (user[0].role === 'webmaster') return
+
+    if (user[0].role === 'teacher') {
+      const cls = await db
+        .select()
+        .from(courseClasses)
+        .where(and(eq(courseClasses.id, lesson.classId), eq(courseClasses.teacherId, userId)))
+        .limit(1)
+      if (cls.length === 0) {
+        throw AppError.forbidden('No tienes permisos sobre esta lección')
+      }
+      return
+    }
+
+    // Student
+    const member = await db
+      .select()
+      .from(groupMembers)
+      .where(and(eq(groupMembers.userId, userId), eq(groupMembers.classId, lesson.classId)))
+      .limit(1)
+    if (member.length === 0) {
+      throw AppError.forbidden('No estás inscrito en la clase de esta lección')
+    }
   }
 
   static async deleteExercise(_teacherId: string, exerciseId: string) {

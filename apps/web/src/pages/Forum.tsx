@@ -27,6 +27,7 @@ export function Forum() {
   const [searchQuery, setSearchQuery] = useState('')
   const [classes, setClasses] = useState<any[]>([])
   const [myLessons, setMyLessons] = useState<any[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [selectedPostId, setSelectedPostId] = useState<string>('')
@@ -55,8 +56,9 @@ export function Forum() {
     try {
       const res = await apiFetch<{ posts: any[] }>('/api/forum/posts')
       setPosts(res.posts)
-    } catch {
-      // ignore
+      setLoadError(null)
+    } catch (err: any) {
+      setLoadError(err?.message || 'No se pudo cargar el foro. Inicia sesión como docente.')
     }
   }
 
@@ -140,6 +142,19 @@ export function Forum() {
       </div>
 
       {/* Forum Posts Grid */}
+      {loadError && (
+        <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-200 text-sm">
+          <p className="font-bold">No se pudo cargar el foro</p>
+          <p className="text-xs mt-1">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadForum()}
+            className="mt-2 text-xs text-rose-300 hover:text-rose-100 underline cursor-pointer"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredPosts.map((post) => (
           <Card

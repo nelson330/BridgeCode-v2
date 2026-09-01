@@ -243,6 +243,124 @@ export function AnswerControls({
     )
   }
 
+  // 2.5 Match Pairs (left -> right matching)
+  if (exerciseType === 'match') {
+    // options is an array of pairs like [{ left, right }, ...] or strings.
+    const pairs: Array<{ left: string; right: string }> = (Array.isArray(options) ? options : []).map(
+      (p: any) =>
+        typeof p === 'object' && p !== null
+          ? { left: String(p.left ?? p.term ?? ''), right: String(p.right ?? p.definition ?? '') }
+          : { left: String(p), right: '' }
+    )
+
+    // State: which left item is selected and which right items are matched to which left.
+    const [leftIndex, setLeftIndex] = useState<number | null>(null)
+    const [matches, setMatches] = useState<Record<number, number>>({})
+
+    useEffect(() => {
+      setLeftIndex(null)
+      setMatches({})
+    }, [exerciseType, options])
+
+    const handlePickLeft = (idx: number) => {
+      if (hasSubmitted || disabled) return
+      sound.playWheelTick()
+      setLeftIndex(idx === leftIndex ? null : idx)
+    }
+
+    const handlePickRight = (rightIdx: number) => {
+      if (hasSubmitted || disabled || leftIndex === null) return
+      sound.playCorrect()
+      setMatches((prev) => ({ ...prev, [leftIndex]: rightIdx }))
+      setLeftIndex(null)
+    }
+
+    const handleSubmitMatch = () => {
+      if (hasSubmitted || disabled) return
+      sound.playPowerup()
+      // Build pairs array reflecting the matches from the original order.
+      const submission = pairs.map((_p, i) => matches[i] ?? -1)
+      onSubmit(JSON.stringify({ pairs: submission }))
+    }
+
+    const matchedRight = new Set(Object.values(matches).filter((v) => v >= 0))
+
+    return (
+      <div className="space-y-4 w-full">
+        <div className="text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Empareja cada concepto de la izquierda con su definición:
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 max-h-72 overflow-y-auto">
+          <div className="space-y-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block text-center">
+              Concepto
+            </span>
+            {pairs.map((p, idx) => (
+              <button
+                key={`l-${idx}`}
+                type="button"
+                disabled={hasSubmitted || disabled}
+                onClick={() => handlePickLeft(idx)}
+                className={`w-full p-2.5 rounded-xl border-2 text-left text-sm font-bold transition-all cursor-pointer ${
+                  leftIndex === idx
+                    ? 'bg-indigo-600/30 border-indigo-400 text-white'
+                    : matches[idx] !== undefined
+                      ? 'bg-emerald-900/40 border-emerald-700 text-emerald-200'
+                      : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-slate-500'
+                }`}
+              >
+                {p.left}
+                {matches[idx] !== undefined && pairs[matches[idx] as number] && (
+                  <span className="block text-[10px] text-emerald-400 mt-0.5">
+                    → {pairs[matches[idx] as number]?.right}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block text-center">
+              Definición
+            </span>
+            {pairs.map((p, idx) => (
+              <button
+                key={`r-${idx}`}
+                type="button"
+                disabled={hasSubmitted || disabled || leftIndex === null || matchedRight.has(idx)}
+                onClick={() => handlePickRight(idx)}
+                className={`w-full p-2.5 rounded-xl border-2 text-left text-sm transition-all cursor-pointer ${
+                  matchedRight.has(idx)
+                    ? 'bg-slate-950 border-slate-800 text-slate-500 opacity-50 cursor-not-allowed'
+                    : leftIndex !== null
+                      ? 'bg-slate-900 border-slate-700 text-slate-200 hover:border-indigo-500 hover:text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300'
+                }`}
+              >
+                {p.right}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          onClick={handleSubmitMatch}
+          disabled={disabled || Object.keys(matches).length === 0}
+          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
+        >
+          <Check className="w-5 h-5" />
+          <span>Confirmar Emparejamiento</span>
+        </Button>
+      </div>
+    )
+  }
+
   // 3. Open Question Response
   if (exerciseType === 'open' || exerciseType === 'short') {
     return (

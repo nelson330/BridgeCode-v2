@@ -14,9 +14,10 @@ gameRoutes.post('/sessions', requireAuth(), requireRole('teacher', 'webmaster'),
   return c.json({ session }, 201)
 })
 
-gameRoutes.get('/sessions/:id', async (c) => {
+gameRoutes.get('/sessions/:id', requireAuth(), async (c) => {
+  const user = c.get('user')
   const sessionId = c.req.param('id')
-  const session = await GamesService.getSession(sessionId)
+  const session = await GamesService.getSession(user.id, sessionId)
   return c.json({ session })
 })
 
@@ -41,13 +42,13 @@ gameRoutes.post('/sessions/:id/finish', requireAuth(), requireRole('teacher', 'w
   return c.json(result)
 })
 
-gameRoutes.post('/sessions/:id/anticheat-event', async (c) => {
+gameRoutes.post('/sessions/:id/anticheat-event', requireAuth(), async (c) => {
   const sessionId = c.req.param('id')
   const user = c.get('user')
   const body = await c.req.json()
   const result = await GamesService.reportAnticheatEvent(
     sessionId,
-    user?.id,
+    user.id,
     body.type || 'BLUR_EVENT',
     JSON.stringify(body.detail || {})
   )

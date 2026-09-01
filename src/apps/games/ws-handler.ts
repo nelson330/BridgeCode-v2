@@ -81,6 +81,15 @@ export function handleWsMessage(ws: ServerWebSocket<WsSocketData>, rawMessage: s
         break
       }
 
+      case 'FOCUS_CHANGE': {
+        if (!ws.data.pin || !ws.data.participantId) return
+        const room = RoomManager.getRoomByPin(ws.data.pin)
+        if (room) {
+          room.recordFocusEvent(ws.data.participantId, message.hasFocus === true)
+        }
+        break
+      }
+
       default:
         break
     }

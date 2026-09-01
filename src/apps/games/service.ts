@@ -2,7 +2,15 @@ import type { CreateSessionRequest } from '@shared/contracts/games'
 import { and, eq } from 'drizzle-orm'
 import { customAlphabet, nanoid } from 'nanoid'
 import { getDb } from '../../core/db/client'
-import { anticheatEvents, courseClasses, exercises, lessons, liveSessions } from '../../core/db/schema'
+import {
+  anticheatEvents,
+  courseClasses,
+  exercises,
+  groupMembers,
+  lessons,
+  liveSessions,
+  users,
+} from '../../core/db/schema'
 import { AppError } from '../../core/errors'
 import { RoomManager } from './room'
 
@@ -60,12 +68,15 @@ export class GamesService {
     }
   }
 
-  static async getSession(sessionId: string) {
+  static async getSession(userId: string, sessionId: string) {
     const db = getDb()
     const found = await db.select().from(liveSessions).where(eq(liveSessions.id, sessionId)).limit(1)
     if (found.length === 0 || !found[0]) {
       throw AppError.notFound('Sesión no encontrada')
     }
+
+    // Verify the user belongs to the session's class
+    await GamesService.assertSessionAccess(userId, found[0])
 
     const parentLesson = await db.select().from(lessons).where(eq(lessons.id, found[0].lessonId)).limit(1)
 
@@ -136,5 +147,34 @@ export class GamesService {
       detailJson: detail || null,
     })
     return { success: true }
+  }
+
+  /**
+   * Verify a user can access a live session. Webmaster has access to everything;
+   * teacher must own the session; student must be enrolled in the session's class.
+   */
+  static async assertSessionAccess(userId: string, session: { classId: string; teacherId: string }) {
+    const db = getDb()
+
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+    if (user.length === 0 || !user[0]) {
+      throw AppError.unauthenticated('Debes iniciar sesión para continuar')
+    }
+
+    if (user[0].role === 'webmaster') return
+    if (user[0].role === 'teacher') {
+      if (session.teacherId === userId) return
+      throw AppError.forbidden('No tienes permisos sobre esta sesión')
+    }
+
+    // Student
+    const member = await db
+      .select()
+      .from(groupMembers)
+      .where(and(eq(groupMembers.userId, userId), eq(groupMembers.classId, session.classId)))
+      .limit(1)
+    if (member.length === 0) {
+      throw AppError.forbidden('No estás inscrito en la clase de esta sesión')
+    }
   }
 }

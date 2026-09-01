@@ -1,2 +1,5 @@
 [test]
 coverage = true
+
+[test.env]
+NODE_ENV = "test"

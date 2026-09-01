@@ -157,7 +157,7 @@ export const answers = sqliteTable('answers', {
   isCorrect: integer('is_correct', { mode: 'boolean' }).notNull(),
   latencyMs: integer('latency_ms').notNull().default(0),
   pointsEarned: integer('points_earned').notNull().default(0),
-  kind: text('kind', { enum: ['session', 'practice', 'challenge'] })
+  kind: text('kind', { enum: ['session', 'practice', 'challenge', 'reading'] })
     .notNull()
     .default('session'),
   flaggedLostFocus: integer('flagged_lost_focus', { mode: 'boolean' }).notNull().default(false),

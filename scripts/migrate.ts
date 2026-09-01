@@ -119,7 +119,7 @@ export async function runMigrations() {
       session_id TEXT REFERENCES live_sessions(id) ON DELETE SET NULL,
       exercise_id TEXT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
       lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-      userId TEXT REFERENCES users(id) ON DELETE SET NULL,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       answer_json TEXT NOT NULL,
       exercise_json_snapshot TEXT,
       is_correct INTEGER NOT NULL,

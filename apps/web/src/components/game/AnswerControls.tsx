@@ -10,6 +10,7 @@ import {
   PenTool,
   Send,
   SlidersHorizontal,
+  Sparkles,
   Square,
   Triangle,
 } from 'lucide-react'
@@ -175,6 +176,16 @@ export function AnswerControls({
     if (hasSubmitted || disabled || !typedText.trim()) return
     sound.playPowerup()
     onSubmit(JSON.stringify({ text: typedText.trim() }))
+  }
+
+  // Slide: no answer needed, just show content
+  if (exerciseType === 'slide') {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 rounded-3xl bg-indigo-950/40 border border-indigo-800/40">
+        <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
+        <p className="text-slate-400 text-sm">Leyendo información...</p>
+      </div>
+    )
   }
 
   if (hasSubmitted) {

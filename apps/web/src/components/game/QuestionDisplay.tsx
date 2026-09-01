@@ -515,6 +515,28 @@ export function QuestionDisplay({
         </div>
       )}
 
+      {/* Slide (Informational) */}
+      {exercise.type === 'slide' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-indigo-950/90 to-slate-900 border-2 border-indigo-400/40 text-center space-y-6 shadow-2xl"
+        >
+          <div className="text-xs font-bold uppercase tracking-widest text-indigo-400 flex items-center justify-center gap-1.5">
+            <Lightbulb className="w-4 h-4" />
+            Información
+          </div>
+          <div className="font-display font-bold text-xl sm:text-2xl text-white leading-relaxed">
+            <MarkdownText content={exercise.prompt} />
+          </div>
+          {exercise.mediaUrl && (
+            <div className="max-h-64 overflow-hidden rounded-2xl border border-slate-800 flex justify-center">
+              <img src={exercise.mediaUrl} alt="Material" className="object-cover h-full" />
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Explanation Banner */}
       {showResult && exercise.explanation && (
         <motion.div

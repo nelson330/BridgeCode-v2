@@ -270,6 +270,50 @@ export class GameRoom {
 
     this.currentExerciseIndex = index
     const exercise = this.exercises[index]
+
+    // Slide type: show content for duration, then auto-advance
+    if (exercise.type === 'slide') {
+      const slideDuration = (() => {
+        try {
+          const cfg = JSON.parse(exercise.answerJson || '{}')
+          return cfg.durationSec || 8
+        } catch {
+          return 8
+        }
+      })()
+
+      const clientExercise = {
+        id: exercise.id,
+        type: exercise.type,
+        prompt: exercise.prompt,
+        mediaUrl: exercise.mediaUrl,
+        optionsJson: exercise.optionsJson,
+        points: 0,
+        timeSec: slideDuration,
+        pointsMultiplier: 1,
+      }
+
+      this.broadcast({
+        type: 'GAME_STARTED',
+        exerciseIndex: index,
+        totalExercises: this.exercises.length,
+        currentExercise: clientExercise,
+        timeSec: slideDuration,
+      })
+
+      this.remainingTimeSec = slideDuration
+      if (this.timerInterval) clearInterval(this.timerInterval)
+      this.timerInterval = setInterval(() => {
+        this.remainingTimeSec -= 1
+        this.broadcast({ type: 'TIMER_TICK', remainingSec: this.remainingTimeSec })
+        if (this.remainingTimeSec <= 0) {
+          clearInterval(this.timerInterval)
+          this.nextExercise()
+        }
+      }, 1000)
+      return
+    }
+
     this.remainingTimeSec = exercise.timeSec || 30
 
     // Reset answered flags

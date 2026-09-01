@@ -7,6 +7,7 @@ import { AppError, ErrorCodes } from '../../core/errors'
 import { logger } from '../../core/logger'
 import { decryptApiKey, encryptApiKey } from '../../core/security/crypto'
 import { isBlockedUrl } from '../../core/security/ssrf'
+import { extractPdfText } from './pdf-extract'
 import { AI_PROVIDER_PRESETS } from './providers/presets'
 
 export class AgentsService {
@@ -163,6 +164,66 @@ export class AgentsService {
     }
 
     const jobId = `job_${nanoid(12)}`
+
+    // Extract PDF text if the lesson has a material file. We only abort the job
+    // when the lesson relies solely on a PDF that we can't read and the teacher
+    // did not type any inline material — in that case there is no real content
+    // to base exercises on, so we refuse to fabricate questions.
+    let pdfText = ''
+    let pdfError: string | null = null
+    if (lesson[0].materialFile) {
+      try {
+        const result = await extractPdfText(lesson[0].materialFile)
+        pdfText = result.text
+        if (result.source === 'empty' || !pdfText) {
+          pdfError =
+            'No se pudo extraer texto del PDF. Verifica que el documento contenga texto seleccionable (no sea una imagen escaneada).'
+        }
+      } catch (err: any) {
+        pdfError = `No se pudo leer el PDF: ${err?.message || 'archivo corrupto o protegido'}`
+      }
+    }
+
+    const textMaterial = (lesson[0].materialContent || '').trim()
+    const combined = [textMaterial, pdfText].filter(Boolean).join('\n\n')
+
+    // Empty lesson + unreadable PDF → abort with a clear explanation, never
+    // generate placeholder exercises.
+    if (!combined.trim() && pdfError) {
+      await db.insert(aiJobs).values({
+        id: jobId,
+        teacherId,
+        lessonId,
+        status: 'error',
+        error: pdfError,
+        exerciseTypesJson: JSON.stringify(req.exerciseTypes),
+        count: req.count,
+        lang: req.lang || lesson[0].lang || 'es',
+        payloadJson: JSON.stringify({ difficulty: req.difficulty, hasPdf: true }),
+        retries: 0,
+      })
+      throw AppError.badRequest(pdfError)
+    }
+
+    // Also abort if the lesson has neither text nor PDF at all.
+    if (!combined.trim()) {
+      const msg =
+        'La lección no tiene contenido (ni texto ni PDF). Agrega material antes de generar ejercicios.'
+      await db.insert(aiJobs).values({
+        id: jobId,
+        teacherId,
+        lessonId,
+        status: 'error',
+        error: msg,
+        exerciseTypesJson: JSON.stringify(req.exerciseTypes),
+        count: req.count,
+        lang: req.lang || lesson[0].lang || 'es',
+        payloadJson: JSON.stringify({ difficulty: req.difficulty }),
+        retries: 0,
+      })
+      throw AppError.badRequest(msg)
+    }
+
     await db.insert(aiJobs).values({
       id: jobId,
       teacherId,
@@ -172,8 +233,9 @@ export class AgentsService {
       count: req.count,
       lang: req.lang || lesson[0].lang || 'es',
       payloadJson: JSON.stringify({
-        material: lesson[0].materialContent || lesson[0].title,
+        material: combined,
         difficulty: req.difficulty,
+        pdfSource: pdfText ? 'extracted' : 'none',
       }),
       retries: 0,
     })
@@ -252,10 +314,11 @@ export class AgentsService {
         const model = providerConfig[0].model || preset?.defaultModel || 'gpt-4o-mini'
 
         const systemPrompt = `Eres un experto docente y diseñador instruccional en creación de ejercicios interactivos gamificados.
-Genera exactamente ${job.count} ejercicios en idioma "${lang}" basados en el conocimiento del siguiente tema/material:
-"""
-${materialText}
-"""
+${materialText ? `A partir del siguiente material educativo:\n"""\n${materialText}\n"""\n\n` : ''}Genera exactamente ${job.count} ejercicios en idioma "${lang}"${
+          materialText
+            ? ' basados estrictamente en el contenido del material mostrado arriba.'
+            : ' sobre el tema indicado en el título de la lección.'
+        }
 Tipos de ejercicios permitidos a generar: ${types.join(', ')}.
 
 REGLAS PEDAGÓGICAS ESTRICTAS DE REDACCIÓN:
@@ -341,105 +404,20 @@ Devuelve ÚNICAMENTE un JSON válido con la siguiente estructura exacta:
         }
       }
 
-      // Ensure exact job.count items using direct educational generator if fewer or no key
+      // If the model produced fewer exercises than requested, mark the job as
+      // error and DO NOT fabricate placeholders. The user gets a clear message
+      // and can retry or reduce the count.
       if (generatedExercises.length < job.count) {
-        const textToSplit = String(materialText || '')
-        const sentences = textToSplit
-          .split(/[.\n]/)
-          .map((s: string) => s.trim())
-          .filter((s: string) => s.length > 15)
-
-        const remainingNeeded = job.count - generatedExercises.length
-        const additionalFallback = Array.from({ length: remainingNeeded }).map((_, i) => {
-          const type = types[(generatedExercises.length + i) % types.length] || 'mc'
-          const _num = generatedExercises.length + i + 1
-          const rawSentence = sentences[i % Math.max(1, sentences.length)] || textToSplit.slice(0, 50)
-          const coreSnippet = rawSentence.replace(/^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]+/, '').trim()
-
-          if (type === 'tf') {
-            return {
-              type: 'tf',
-              prompt: `¿Es correcta la siguiente afirmación?: "${coreSnippet}".`,
-              optionsJson: JSON.stringify(['Verdadero', 'Falso']),
-              answerJson: JSON.stringify({ isTrue: true }),
-              explanation: `Efectivamente, ${coreSnippet.toLowerCase()} es un principio demostrado en la materia.`,
-              points: 1,
-              timeSec: 30,
-            }
-          }
-          if (type === 'fill') {
-            const cleanSnippet = coreSnippet.replace(/[[\]]/g, '')
-            const words = cleanSnippet
-              .split(/\s+/)
-              .map((w: string) => w.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ0-9]/g, '').trim())
-              .filter((w: string) => w.length > 3)
-
-            const targetWord = words[Math.floor(words.length / 2)] || 'fundamental'
-            const promptSentence = cleanSnippet.includes(targetWord)
-              ? cleanSnippet.replace(targetWord, '[ ___ ]')
-              : `${cleanSnippet} [ ___ ]`
-
-            return {
-              type: 'fill',
-              prompt: `Completa el término que falta: "${promptSentence}".`,
-              optionsJson: null,
-              answerJson: JSON.stringify({ validAnswers: [targetWord.toLowerCase(), targetWord] }),
-              explanation: `El término adecuado para completar la oración es "${targetWord}".`,
-              points: 1,
-              timeSec: 30,
-            }
-          }
-          if (type === 'order') {
-            return {
-              type: 'order',
-              prompt: `Ordena cronológica o lógicamente la siguiente secuencia sobre **${coreSnippet.slice(0, 30)}**:`,
-              optionsJson: JSON.stringify([
-                'Fase Inicial o Premisa',
-                'Desarrollo o Proceso',
-                'Conclusión o Resultado',
-              ]),
-              answerJson: JSON.stringify({ correctOrder: [0, 1, 2] }),
-              explanation:
-                'La secuencia adecuada progresa desde la premisa inicial, continúa por el proceso y finaliza con la conclusión.',
-              points: 1,
-              timeSec: 30,
-            }
-          }
-          if (type === 'match') {
-            return {
-              type: 'match',
-              prompt: 'Empareja cada concepto clave con su respectiva definición o propiedad:',
-              optionsJson: JSON.stringify([
-                { left: 'Propiedad A', right: 'Definición de A' },
-                { left: 'Propiedad B', right: 'Definición de B' },
-              ]),
-              answerJson: JSON.stringify({
-                pairs: [
-                  { left: 'Propiedad A', right: 'Definición de A' },
-                  { left: 'Propiedad B', right: 'Definición de B' },
-                ],
-              }),
-              explanation: 'Cada propiedad o término corresponde a su definición técnica.',
-              points: 1,
-              timeSec: 30,
-            }
-          }
-          return {
-            type: 'mc',
-            prompt: `Respecto a **${coreSnippet.slice(0, 45)}**, ¿cuál es la opción correcta?`,
-            optionsJson: JSON.stringify([
-              'Es una característica o ley fundamental del tema',
-              'Es una excepción que nunca se aplica',
-              'Es un concepto opcional y prescindible',
-              'No guarda relación con los conceptos estudiados',
-            ]),
-            answerJson: JSON.stringify({ correctIndex: 0 }),
-            explanation: `La afirmación correcta describe la propiedad central de ${coreSnippet.slice(0, 30).toLowerCase()}.`,
-            points: 1,
-            timeSec: 30,
-          }
-        })
-        generatedExercises = [...generatedExercises, ...additionalFallback]
+        await db
+          .update(aiJobs)
+          .set({
+            status: 'error',
+            error: `El modelo generó ${generatedExercises.length} de ${job.count} ejercicios solicitados. No se generaron placeholders. Intenta de nuevo o reduce la cantidad.`,
+            resultJson: generatedExercises.length > 0 ? JSON.stringify(generatedExercises) : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(aiJobs.id, jobId))
+        return
       }
 
       await db

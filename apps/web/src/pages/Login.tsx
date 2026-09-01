@@ -1,17 +1,4 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  GraduationCap,
-  Key,
-  Lock,
-  LogIn,
-  Mail,
-  Shield,
-  Sparkles,
-  User,
-  UserPlus,
-} from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, Lock, LogIn, User, UserPlus } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -25,11 +12,11 @@ import { sound } from '../lib/audio-synth'
 import { triggerConfetti } from '../lib/confetti'
 
 export function Login() {
-  const { login, isLocalMode } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
 
-  const [username, setUsername] = useState('docente')
-  const [password, setPassword] = useState('docente123')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -106,11 +93,6 @@ export function Login() {
     }
   }
 
-  const fillTestCredentials = (user: string, pass: string) => {
-    setUsername(user)
-    setPassword(pass)
-  }
-
   return (
     <div className="flex-1 flex items-center justify-center p-4">
       <motion.div
@@ -124,9 +106,7 @@ export function Login() {
               <LogIn className="w-6 h-6" />
             </div>
             <h2 className="font-display font-black text-2xl sm:text-3xl text-white">Iniciar Sesión</h2>
-            <p className="text-xs text-slate-400">
-              Ingresa tus credenciales de docente, alumno o administrador.
-            </p>
+            <p className="text-xs text-slate-400">Accede a tu cuenta para continuar.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -191,58 +171,6 @@ export function Login() {
               <UserPlus className="w-3.5 h-3.5" />
               <span>¿Eres profesor nuevo? Solicita tu cuenta docente</span>
             </button>
-          </div>
-
-          {/* Quick 1-Click Credentials for Testing Real Flows */}
-          <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block text-center">
-              Accesos Rápidos de Prueba Real
-            </span>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => fillTestCredentials('docente', 'docente123')}
-                className="w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs flex items-center justify-between transition-colors cursor-pointer"
-              >
-                <div>
-                  <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                    <GraduationCap className="w-3.5 h-3.5" /> Docente Titular
-                  </span>
-                  <span className="text-slate-400">docente / docente123</span>
-                </div>
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillTestCredentials('sofia.garcia', 'alumno123')}
-                className="w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs flex items-center justify-between transition-colors cursor-pointer"
-              >
-                <div>
-                  <span className="font-bold text-indigo-400 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" /> Estudiante (Sofía García)
-                  </span>
-                  <span className="text-slate-400">sofia.garcia / alumno123</span>
-                </div>
-                <GraduationCap className="w-4 h-4 text-indigo-400" />
-              </button>
-
-              {!isLocalMode && (
-                <button
-                  type="button"
-                  onClick={() => fillTestCredentials('webmaster', 'admin123')}
-                  className="w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <div>
-                    <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5" /> Webmaster
-                    </span>
-                    <span className="text-slate-400">webmaster / admin123</span>
-                  </div>
-                  <Key className="w-4 h-4 text-amber-400" />
-                </button>
-              )}
-            </div>
           </div>
         </Card>
       </motion.div>

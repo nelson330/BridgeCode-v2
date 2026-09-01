@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { AuthService } from '../../src/apps/auth/service'
-import { loadConfig } from '../../src/core/config'
+import { getConfig, loadConfig } from '../../src/core/config'
 import { initDb } from '../../src/core/db/client'
 import { createHttpApp } from '../../src/core/http/app'
 import { decryptApiKey, encryptApiKey } from '../../src/core/security/crypto'
@@ -111,7 +113,7 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
     expect(publishData.status).toBe('published')
   })
 
-  it('configures AI provider and launches generation job with fallback', async () => {
+  it('configures AI provider and launches generation job (no placeholder fallback when LLM unreachable)', async () => {
     const app = createHttpApp()
     await AuthService.seedInitialUser()
 
@@ -202,10 +204,14 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
       if (statusData.status === 'done' || statusData.status === 'error') break
     }
 
-    expect(statusData.status).toBe('done')
-    expect(statusData.exercises.length).toBe(2)
+    // The Groq API is not reachable from CI. The contract is: NEVER fabricate
+    // placeholder exercises — the job must end with status='error' and a
+    // clear message telling the teacher to retry or reduce the count.
+    expect(statusData.status).toBe('error')
+    expect(statusData.error).toMatch(/No se generaron placeholders|generó \d+ de \d+/)
+    expect(statusData.exercises.length).toBe(0)
 
-    // 6. Teacher adds the AI-generated exercises to the lesson in batch
+    // 6. Teacher cannot add empty exercises to the lesson in batch
     const batchRes = await app.request(`/api/lessons/${lessonId}/exercises/batch`, {
       method: 'POST',
       headers: {
@@ -216,27 +222,7 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
         exercises: statusData.exercises,
       }),
     })
-    expect(batchRes.status).toBe(201)
-    const batchData = (await batchRes.json()) as any
-    expect(batchData.count).toBe(2)
-    expect(batchData.exercises.length).toBe(2)
-
-    // 7. Verify exercises now exist in the database for this lesson
-    const listExRes = await app.request(`/api/lessons/${lessonId}/exercises`, {
-      headers: { Cookie: cookie },
-    })
-    expect(listExRes.status).toBe(200)
-    const listExData = (await listExRes.json()) as any
-    expect(listExData.exercises.length).toBe(2)
-
-    // 8. Publish lesson now that it contains the AI generated exercises
-    const publishRes = await app.request(`/api/lessons/${lessonId}/publish`, {
-      method: 'POST',
-      headers: { Cookie: cookie },
-    })
-    expect(publishRes.status).toBe(200)
-    const publishData = (await publishRes.json()) as any
-    expect(publishData.status).toBe('published')
+    expect(batchRes.status).toBe(400)
   }, 20000)
 
   it('generates 8 exercises requested with slider and saves all 8 to lesson in batch', async () => {
@@ -296,26 +282,11 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
       if (statusData.status === 'done' || statusData.status === 'error') break
     }
 
-    expect(statusData.status).toBe('done')
-    expect(statusData.exercises.length).toBe(8)
-
-    // 4. Batch save all 8 exercises
-    const batchRes = await app.request(`/api/lessons/${lessonId}/exercises/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ exercises: statusData.exercises }),
-    })
-    expect(batchRes.status).toBe(201)
-    const batchData = (await batchRes.json()) as any
-    expect(batchData.count).toBe(8)
-
-    // 5. Verify 8 exercises stored
-    const listRes = await app.request(`/api/lessons/${lessonId}/exercises`, {
-      headers: { Cookie: cookie },
-    })
-    expect(listRes.status).toBe(200)
-    const listData = (await listRes.json()) as any
-    expect(listData.exercises.length).toBe(8)
+    // Without a reachable LLM, the contract is: NEVER fabricate placeholders.
+    // The job must end with status='error' and a clear message.
+    expect(statusData.status).toBe('error')
+    expect(statusData.error).toMatch(/No se generaron placeholders|generó \d+ de \d+/)
+    expect(statusData.exercises.length).toBe(0)
   }, 20000)
 
   it('generates exercises without regex errors when lesson material has parentheses, formulas and brackets', async () => {
@@ -375,19 +346,11 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
       if (statusData.status === 'done' || statusData.status === 'error') break
     }
 
-    expect(statusData.status).toBe('done')
-    expect(statusData.error).toBeFalsy()
-    expect(statusData.exercises.length).toBe(4)
-
-    // Save generated exercises including fill (which has optionsJson: null)
-    const batchSaveRes = await app.request(`/api/lessons/${lessonId}/exercises/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ exercises: statusData.exercises }),
-    })
-    expect(batchSaveRes.status).toBe(201)
-    const batchSaveData = (await batchSaveRes.json()) as any
-    expect(batchSaveData.count).toBe(4)
+    // Same contract: without a real model reachable, we must NOT generate
+    // placeholder exercises — the job ends in error.
+    expect(statusData.status).toBe('error')
+    expect(statusData.error).toMatch(/No se generaron placeholders|generó \d+ de \d+/)
+    expect(statusData.exercises.length).toBe(0)
   }, 20000)
 
   it('accepts single and batch creation of exercises with optionsJson: null (fill, open)', async () => {
@@ -470,5 +433,70 @@ describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
       }),
     })
     expect(singleRes.status).toBe(201)
+  })
+
+  it('AI job for a lesson with only an unreadable PDF aborts with a clear error (no placeholder fabrication)', async () => {
+    const app = createHttpApp()
+    await AuthService.seedInitialUser()
+
+    const loginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'docente',
+        password: 'docente123',
+      }),
+    })
+    const cookie = loginRes.headers.get('set-cookie')!
+
+    // 1. Create a class + lesson with only a PDF (no inline materialContent)
+    const classRes = await app.request('/api/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ name: 'PDF Testing' }),
+    })
+    const classId = ((await classRes.json()) as any).class.id
+
+    const lessonRes = await app.request(`/api/groups/${classId}/lessons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({
+        title: 'Lección con PDF',
+      }),
+    })
+    const lessonId = ((await lessonRes.json()) as any).lesson.id
+
+    // 2. Plant a fake PDF on disk and write the URL into materialFile.
+    // The LessonUpdate schema does not expose materialFile (pre-existing gap),
+    // so we update the DB directly for this test to simulate a lesson with
+    // only an unreadable PDF attached.
+    const uploadsDir = join(getConfig().DATA_DIR, 'uploads')
+    mkdirSync(uploadsDir, { recursive: true })
+    const pdfName = `${Date.now()}_bad.pdf`
+    writeFileSync(join(uploadsDir, pdfName), Buffer.from('not a real pdf'))
+
+    const { lessons } = await import('../../src/core/db/schema')
+    const { eq } = await import('drizzle-orm')
+    const { getDb } = await import('../../src/core/db/client')
+    getDb()
+      .update(lessons)
+      .set({ materialFile: `/api/uploads/${pdfName}` })
+      .where(eq(lessons.id, lessonId))
+      .run()
+
+    // 3. Trigger the AI generation — must abort with 400 and a clear message
+    const jobRes = await app.request(`/api/ai/lessons/${lessonId}/ai-generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({
+        exerciseTypes: ['mc'],
+        count: 2,
+        difficulty: 'medium',
+        lang: 'es',
+      }),
+    })
+    expect(jobRes.status).toBe(400)
+    const jobData = (await jobRes.json()) as any
+    expect(jobData.error.message).toMatch(/No se pudo leer el PDF|texto seleccionable/)
   })
 })

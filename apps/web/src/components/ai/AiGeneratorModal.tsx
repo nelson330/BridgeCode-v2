@@ -1,6 +1,16 @@
 import type { AiJobStatusResponse } from '@shared/contracts/ai'
 import type { ExerciseCreate } from '@shared/contracts/exercises'
-import { AlertCircle, Bot, Check, CheckCircle2, ListOrdered, Plus, Sliders, Sparkles } from 'lucide-react'
+import {
+  AlertCircle,
+  Bot,
+  Check,
+  CheckCircle2,
+  FileText,
+  ListOrdered,
+  Plus,
+  Sliders,
+  Sparkles,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
@@ -15,6 +25,7 @@ interface AiGeneratorModalProps {
   onOpenChange: (open: boolean) => void
   lessonId: string
   onExercisesGenerated: (exercises: ExerciseCreate[]) => void
+  hasMaterialFile?: boolean
 }
 
 export function AiGeneratorModal({
@@ -22,6 +33,7 @@ export function AiGeneratorModal({
   onOpenChange,
   lessonId,
   onExercisesGenerated,
+  hasMaterialFile = false,
 }: AiGeneratorModalProps) {
   const [activeProvider, setActiveProvider] = useState<{
     id: string
@@ -291,11 +303,32 @@ export function AiGeneratorModal({
           </div>
         </div>
 
+        {/* Material source banner — sets expectations before generating */}
+        {hasMaterialFile && (
+          <div
+            data-testid="ai-pdf-banner"
+            className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-800/80 text-amber-200 text-xs"
+          >
+            <FileText className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-bold">PDF adjunto a la lección</p>
+              <p className="text-amber-300/80">
+                El modelo intentará leer el PDF y extraer su contenido antes de generar las preguntas. Si el
+                PDF es una imagen escaneada o no contiene texto seleccionable, la generación se cancelará con
+                un mensaje claro.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {errorMessage && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">No se pudieron generar los ejercicios</p>
+              <p className="text-rose-300/90 whitespace-pre-line">{errorMessage}</p>
+            </div>
           </div>
         )}
 

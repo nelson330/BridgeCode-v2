@@ -1388,6 +1388,7 @@ export function Dashboard() {
           loadLessonExercises(selectedLessonForAi)
           loadClassData()
         }}
+        hasMaterialFile={Boolean(lessons.find((l) => l.id === selectedLessonForAi)?.materialFile)}
       />
       {/* MODAL 3B: CONFIRMACIÓN DE ALUMNO CREADO Y CREDENCIALES */}
       <Dialog

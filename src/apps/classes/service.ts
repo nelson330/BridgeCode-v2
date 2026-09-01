@@ -1,5 +1,5 @@
 import type { ClassCreate, ClassUpdate } from '@shared/contracts/classes'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, or, sql } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import { getDb } from '../../core/db/client'
 import { auditLogs, courseClasses, groupMembers, lessons, users } from '../../core/db/schema'
@@ -43,8 +43,10 @@ export class ClassesService {
     }
   }
 
-  static async listClasses(teacherId: string) {
+  static async listClasses(userId: string) {
     const db = getDb()
+
+    // Return classes the user teaches OR is enrolled in as a student.
     const classes = await db
       .select({
         id: courseClasses.id,
@@ -56,21 +58,39 @@ export class ClassesService {
         lessonCount: sql<number>`(SELECT COUNT(*) FROM lessons WHERE lessons.class_id = course_classes.id)`,
       })
       .from(courseClasses)
-      .where(eq(courseClasses.teacherId, teacherId))
+      .where(
+        or(
+          eq(courseClasses.teacherId, userId),
+          inArray(
+            courseClasses.id,
+            db.select({ id: groupMembers.classId }).from(groupMembers).where(eq(groupMembers.userId, userId))
+          )
+        )
+      )
 
     return classes
   }
 
-  static async getClass(teacherId: string, classId: string) {
+  static async getClass(userId: string, classId: string) {
     const db = getDb()
-    const found = await db
-      .select()
-      .from(courseClasses)
-      .where(and(eq(courseClasses.id, classId), eq(courseClasses.teacherId, teacherId)))
-      .limit(1)
+    const found = await db.select().from(courseClasses).where(eq(courseClasses.id, classId)).limit(1)
 
-    if (found.length === 0 || !found[0]) {
+    if (!found[0]) {
       throw AppError.notFound('Clase no encontrada')
+    }
+
+    // Verify the user is either the teacher or an enrolled student.
+    const isTeacher = found[0].teacherId === userId
+    if (!isTeacher) {
+      const enrollment = await db
+        .select()
+        .from(groupMembers)
+        .where(and(eq(groupMembers.userId, userId), eq(groupMembers.classId, classId)))
+        .limit(1)
+
+      if (!enrollment[0]) {
+        throw AppError.notFound('Clase no encontrada')
+      }
     }
 
     const members = await db

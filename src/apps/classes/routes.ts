@@ -12,9 +12,10 @@ import { ClassesService } from './service'
 
 export const classRoutes = new Hono()
 
-// Apply authentication and role check to specific class management endpoints
-classRoutes.use('/', requireAuth(), requireRole('teacher', 'webmaster'))
-classRoutes.use('/:id', requireAuth(), requireRole('teacher', 'webmaster'))
+// Authentication for all class routes — students can read their own classes;
+// role checks are applied per-route for mutating operations below.
+classRoutes.use('/', requireAuth())
+classRoutes.use('/:id', requireAuth())
 classRoutes.use('/:id/members', requireAuth(), requireRole('teacher', 'webmaster'))
 classRoutes.use('/:id/members/:userId', requireAuth(), requireRole('teacher', 'webmaster'))
 classRoutes.use('/:id/students', requireAuth(), requireRole('teacher', 'webmaster'))
@@ -22,7 +23,7 @@ classRoutes.use('/:id/students/:studentId', requireAuth(), requireRole('teacher'
 classRoutes.use('/:id/students/:studentId/reset-password', requireAuth(), requireRole('teacher', 'webmaster'))
 classRoutes.use('/students/:studentId/reset-password', requireAuth(), requireRole('teacher', 'webmaster'))
 
-classRoutes.post('/', async (c) => {
+classRoutes.post('/', requireRole('teacher', 'webmaster'), async (c) => {
   const user = c.get('user')
   const body = await c.req.json()
   const parsed = ClassCreateSchema.parse(body)
@@ -43,7 +44,7 @@ classRoutes.get('/:id', async (c) => {
   return c.json({ class: detail })
 })
 
-classRoutes.patch('/:id', async (c) => {
+classRoutes.patch('/:id', requireRole('teacher', 'webmaster'), async (c) => {
   const user = c.get('user')
   const classId = c.req.param('id')
   const body = await c.req.json()
@@ -52,7 +53,7 @@ classRoutes.patch('/:id', async (c) => {
   return c.json(result)
 })
 
-classRoutes.delete('/:id', async (c) => {
+classRoutes.delete('/:id', requireRole('teacher', 'webmaster'), async (c) => {
   const user = c.get('user')
   const classId = c.req.param('id')
   const result = await ClassesService.deleteClass(user.id, classId)

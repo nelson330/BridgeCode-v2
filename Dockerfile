@@ -39,9 +39,13 @@ USER app
 
 # Copy built artifacts.
 # dist/entry.js is the pre-bundled backend (bun build --target bun, 248 modules
-# bundled). dist/web holds the Vite-built frontend assets. Both are fully
-# self-contained — no source files or tsconfig path aliases needed at runtime.
+# bundled). dist/web holds the Vite-built frontend assets. dist/ is fully
+# self-contained for path aliases, but node_modules is still needed at runtime
+# because pino's thread-stream transport dynamically resolves its worker file
+# (thread-stream/lib/worker.js) from node_modules (used only in dev via
+# pino-pretty; in production transport is disabled — the import is harmless).
 COPY --from=builder --chown=app:app /app/dist ./dist
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/package.json ./
 
 EXPOSE 3000

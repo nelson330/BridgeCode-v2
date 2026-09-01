@@ -142,6 +142,8 @@ export function HostRoom() {
             if (preCountdown !== null) {
               setPreCountdown(msg.remainingSec)
               if (msg.remainingSec <= 3 && msg.remainingSec > 0) {
+                sound.playCountdownDramatic()
+              } else if (msg.remainingSec > 3) {
                 sound.playCountdownTick()
               }
             }
@@ -539,7 +541,15 @@ export function HostRoom() {
                 {/* Teacher Control Bar */}
                 <div className="flex items-center gap-4 pt-4">
                   {!isRevealed ? (
-                    <Button variant="primary" size="lg" onClick={() => setIsRevealed(true)} className="gap-2">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => {
+                        setIsRevealed(true)
+                        sound.playReveal()
+                      }}
+                      className="gap-2"
+                    >
                       <Sparkles className="w-5 h-5" />
                       <span>Revelar Respuesta Correcta</span>
                     </Button>

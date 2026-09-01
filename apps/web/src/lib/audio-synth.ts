@@ -163,6 +163,67 @@ class AudioSynth {
     osc.start(now)
     osc.stop(now + 0.3)
   }
+
+  public playReveal() {
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    const now = ctx.currentTime
+
+    // Dramatic drum roll effect
+    for (let i = 0; i < 8; i++) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const t = now + i * 0.05
+
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(100 + i * 20, t)
+
+      gain.gain.setValueAtTime(0.15, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08)
+
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+
+      osc.start(t)
+      osc.stop(t + 0.08)
+    }
+
+    // Final impact
+    const impact = ctx.createOscillator()
+    const impactGain = ctx.createGain()
+    impact.type = 'sine'
+    impact.frequency.setValueAtTime(200, now + 0.4)
+    impact.frequency.exponentialRampToValueAtTime(80, now + 0.6)
+    impactGain.gain.setValueAtTime(0.3, now + 0.4)
+    impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7)
+    impact.connect(impactGain)
+    impactGain.connect(ctx.destination)
+    impact.start(now + 0.4)
+    impact.stop(now + 0.7)
+  }
+
+  public playCountdownDramatic() {
+    const ctx = this.getContext()
+    if (!ctx) return
+
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(440, now)
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15)
+
+    gain.gain.setValueAtTime(0.25, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(now)
+    osc.stop(now + 0.2)
+  }
 }
 
 export const sound = new AudioSynth()

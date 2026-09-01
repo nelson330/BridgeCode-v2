@@ -138,6 +138,7 @@ export function PlayerRoom() {
           case 'EXERCISE_RESULT': {
             setStatus('result')
             setExplanation(msg.explanation || null)
+            sound.playReveal()
 
             const me = msg.leaderboard.find((p) => p.displayName === savedName)
             if (me) {

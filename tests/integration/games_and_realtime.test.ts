@@ -80,6 +80,43 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
       )
     ).toBe(true)
     expect(isAnswerCorrect('open', '{"text": "No sé nada"}', '{"keywords": ["gravedad"]}')).toBe(false)
+
+    // Type Answer (case-insensitive by default)
+    expect(
+      isAnswerCorrect('type_answer', '{"text": "Fotosíntesis"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+    ).toBe(true)
+    expect(
+      isAnswerCorrect('type_answer', '{"text": "FOTOSÍNTESIS"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+    ).toBe(true)
+    expect(
+      isAnswerCorrect('type_answer', '{"text": "Oxígeno"}', '{"validAnswers": ["fotosíntesis"], "caseSensitive": false}')
+    ).toBe(false)
+
+    // Slider (within tolerance)
+    expect(isAnswerCorrect('slider', '{"value": 42}', '{"correctValue": 42, "tolerance": 5}')).toBe(true)
+    expect(isAnswerCorrect('slider', '{"value": 45}', '{"correctValue": 42, "tolerance": 5}')).toBe(true)
+    expect(isAnswerCorrect('slider', '{"value": 50}', '{"correctValue": 42, "tolerance": 5}')).toBe(false)
+
+    // Pin Drop (within tolerance pixels)
+    expect(isAnswerCorrect('pin_drop', '{"x": 100, "y": 100}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(true)
+    expect(isAnswerCorrect('pin_drop', '{"x": 120, "y": 130}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(true)
+    expect(isAnswerCorrect('pin_drop', '{"x": 200, "y": 200}', '{"correctX": 100, "correctY": 100, "tolerancePx": 50}')).toBe(false)
+
+    // Word Cloud (always true - non-competitive)
+    expect(isAnswerCorrect('word_cloud', '{"text": "célula"}', '{"sampleWords": ["célula", "mitocondria"]}')).toBe(true)
+
+    // Slide (always true - informational)
+    expect(isAnswerCorrect('slide', '{}', '{"durationSec": 8}')).toBe(true)
+
+    // Race mode scoring (no streak bonus)
+    const raceRes = calculateScore(1, 30, 5000, 4, true, 'race')
+    expect(raceRes.pointsEarned).toBeGreaterThan(0)
+    expect(raceRes.multiplier).toBe(1.0) // No streak bonus in race mode
+
+    // Points multiplier
+    const multRes = calculateScore(1, 30, 0, 0, true, 'classic', 2)
+    expect(multRes.pointsEarned).toBe(200) // 100 * 2
+    expect(multRes.multiplier).toBe(2.0)
   })
 
   it('manages real-time room lifecycle: join, start, submit answer, roulette, finish', async () => {

@@ -1,9 +1,11 @@
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { runDatabaseSeed } from '../scripts/seed'
 import { AuthService } from './apps/auth/service'
 import { type WsSocketData, handleWsClose, handleWsMessage } from './apps/games/ws-handler'
 import { getConfig } from './core/config'
-import { initDb } from './core/db/client'
+import { getDb, initDb } from './core/db/client'
+import { users } from './core/db/schema'
 import { createHttpApp } from './core/http/app'
 import { logger } from './core/logger'
 
@@ -27,8 +29,22 @@ async function bootstrap() {
   // 2. Initialize database
   initDb()
 
-  // 3. Seed default administrative user based on mode
-  await AuthService.seedInitialUser()
+  // 3. Seed default users. Always runs (idempotent) so existing DBs are not
+  // touched. In production this auto-populates the database on first boot
+  // when /var/data is empty (Render free tier); on persistent disks the
+  // `onConflictDoNothing` guards re-seed against existing users.
+  if (config.NODE_ENV === 'production' && config.MODE === 'hosted') {
+    const existing = getDb().select().from(users).limit(1).all()
+    if (existing.length === 0) {
+      logger.info('🌱 Empty database detected — running initial seed for production hosted mode...')
+      await runDatabaseSeed()
+    } else {
+      // Idempotent: only ensures default admin/teacher/student exist if missing.
+      await AuthService.seedInitialUser()
+    }
+  } else {
+    await AuthService.seedInitialUser()
+  }
 
   // 4. Initialize HTTP App
   const app = createHttpApp()

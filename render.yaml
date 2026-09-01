@@ -1,0 +1,58 @@
+# Render Blueprint for AulaPlay
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy with: `render blueprint launch` (or import via Render dashboard).
+# This blueprint provisions ONE Docker web service. Persistent disk is NOT
+# attached: SQLite lives on the ephemeral container disk and is re-seeded
+# on every deploy. For demos/showcase only — see README for production
+# guidance (Postgres + S3 + Managed Redis).
+
+services:
+  - type: web
+    name: aulaplay
+    runtime: docker
+    plan: starter                 # change to 'free' or 'standard' as needed
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true              # redeploy on every push to the connected branch
+    envVars:
+      # ── Required ──────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: MODE
+        value: hosted
+      - key: PORT
+        value: "3000"
+      - key: BASE_URL
+        sync: false                # set manually in Render dashboard to your service URL
+      - key: DATA_DIR
+        value: /var/data
+      - key: COOKIE_SECURE
+        value: "true"              # required when served over HTTPS on Render
+      - key: AI_KEYS_AES_AAD
+        generateValue: true        # Render generates a random secret on first deploy
+      # ── Sessions ──────────────────────────────────────────────────────────
+      - key: SESSION_TTL_MS
+        value: "43200000"          # 12h teacher/webmaster
+      - key: SESSION_TTL_STUDENT_MS
+        value: "28800000"          # 8h student
+      - key: LOGIN_MAX_ATTEMPTS
+        value: "5"
+      - key: LOGIN_BLOCK_MS
+        value: "300000"            # 5 min
+      # ── AI limits ─────────────────────────────────────────────────────────
+      - key: AI_TIMEOUT_MS
+        value: "90000"
+      - key: AI_MAX_TOKENS
+        value: "4096"
+      - key: AI_RATE_PER_MIN
+        value: "10"
+      # ── Backup ─────────────────────────────────────────────────────────────
+      - key: BACKUP_ENABLED
+        value: "false"             # disabled: no persistent disk in this config
+      - key: BACKUP_INTERVAL_H
+        value: "24"
+      - key: BACKUP_RETENTION
+        value: "7"

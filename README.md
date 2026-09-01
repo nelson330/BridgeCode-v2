@@ -189,6 +189,67 @@ aulaplay/
 
 ---
 
+## ☁️ Desplegar en Render
+
+El repositorio incluye un `Dockerfile` multi-stage y un `render.yaml` listos para
+[Render Blueprint](https://render.com/docs/blueprint-spec). El servidor Hono sirve
+tanto la API REST/WebSocket como los assets estáticos del front-end (construido
+con Vite en `dist/web/`).
+
+### Despliegue en 3 pasos
+
+1. **Sube el repo a GitHub/GitLab** (rama `dev` o `main`).
+2. En Render: **New → Blueprint**, conecta el repo, Render detecta `render.yaml`.
+3. Antes del primer deploy, abre `aulaplay` → **Environment** y edita:
+   - `BASE_URL` — pega la URL que Render asignó (ej. `https://aulaplay.onrender.com`).
+   - (Opcional) AI provider keys en `AI_PROVIDER_*` si vas a usar generación IA.
+
+Render construirá el Docker, ejecutará `bun run db:migrate` indirectamente al boot
+vía `src/entry.ts`, auto-seed la base de datos en el primer arranque y expondrá:
+
+| URL | Sirve |
+|-----|-------|
+| `/` | Front-end React (SPA) |
+| `/assets/*` | Assets hasheados de Vite (cache 1 año) |
+| `/api/*` | API REST + WebSocket en `/api/ws/game` |
+| `/dashboard`, `/student`, `/admin`, `/login`, `/join`, `/play/:pin`, `/host/:sessionId`, `/forum` | Rutas React Router (caen en SPA fallback) |
+
+### Logs y credenciales sembradas
+
+El primer boot detecta DB vacía y corre el seed. Las contraseñas aleatorias
+generadas se imprimen en **stdout** una sola vez. Para verlas:
+
+- Render dashboard → `aulaplay` → **Logs**.
+- Busca las líneas `[seed] Generated password for admin/docente/alumno: ...`.
+
+> ⚠️ **Limitaciones del free tier de Render**: el disco es efímero. Cada redeploy
+> borra uploads y base de datos. Solo apto para demos/showcase.
+> Para producción real necesitas un Persistent Disk (Standard plan) **o**
+> migrar a PostgreSQL gestionado + S3 para uploads.
+
+### Variables de entorno clave
+
+| Variable | Default | Notas |
+|----------|---------|-------|
+| `NODE_ENV` | `production` | Activa el servicio de assets estáticos y el modo producción |
+| `MODE` | `hosted` | Habilita social wall, foro, admin |
+| `PORT` | `3000` | Render lo inyecta automáticamente |
+| `DATA_DIR` | `/var/data` | Volumen efímero. Para persistente usar Render Disk |
+| `BASE_URL` | — | **Requerido**. URL pública del servicio (https://...) |
+| `COOKIE_SECURE` | `true` | Necesario para HTTPS |
+| `AI_KEYS_AES_AAD` | random | Generado por Render en primer deploy, mantener secreto |
+
+### Build manual (alternativa sin Blueprint)
+
+```bash
+# Desde Render Dashboard → New → Web Service → Docker
+Build Command: (usa Dockerfile — no necesitas definir)
+Start Command: bun src/entry.ts
+Health Check Path: /api/health
+```
+
+---
+
 ## 🌿 Estrategia de Ramas en Git
 
 El proyecto sigue una convención organizada de ramas:

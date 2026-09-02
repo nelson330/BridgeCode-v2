@@ -30,9 +30,15 @@ export function PlayerRoom() {
   const navigate = useNavigate()
 
   const [displayName, setDisplayName] = useState('')
-  const [status, setStatus] = useState<
+  const [status, setStatusState] = useState<
     'connecting' | 'lobby' | 'countdown' | 'active' | 'result' | 'scoreboard' | 'finished'
   >('connecting')
+  const statusRef = useRef(status)
+  const setStatus = (s: typeof status) => {
+    statusRef.current = s
+    setStatusState(s)
+  }
+
   const [currentExercise, setCurrentExercise] = useState<any>(null)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [totalExercises, setTotalExercises] = useState(0)
@@ -109,7 +115,7 @@ export function PlayerRoom() {
             break
 
           case 'TIMER_TICK':
-            if (status === 'countdown') {
+            if (statusRef.current === 'countdown') {
               setCountdownValue(msg.remainingSec)
               if (msg.remainingSec <= 3 && msg.remainingSec > 0) {
                 sound.playCountdownTick()
@@ -340,6 +346,7 @@ export function PlayerRoom() {
                       })()
                     : []
               }
+              answerJson={currentExercise.answerJson}
               hasSubmitted={hasSubmitted}
               onSubmit={handleSubmitAnswer}
               disabled={remainingSec <= 0}

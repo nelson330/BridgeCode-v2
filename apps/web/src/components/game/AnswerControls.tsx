@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { sound } from '../../lib/audio-synth'
 import { Button } from '../ui/Button'
 
@@ -72,6 +72,13 @@ export function AnswerControls({
   mediaUrl,
   answerJson,
 }: AnswerControlsProps) {
+  // ─── Immutable content signature to prevent timer re-render shuffle bugs ────
+  const contentKey = useMemo(() => {
+    const optsStr = typeof options === 'string' ? options : JSON.stringify(options ?? '')
+    const ansStr = typeof answerJson === 'string' ? answerJson : JSON.stringify(answerJson ?? '')
+    return `${exerciseType}::${optsStr}::${ansStr}`
+  }, [exerciseType, options, answerJson])
+
   // ─── All hooks must be at the top ────────────────────────────────────────────
   const [orderItems, setOrderItems] = useState<Array<{ id: number; text: string }>>([])
 
@@ -82,20 +89,22 @@ export function AnswerControls({
   // Pin drop state
   const [pinPos, setPinPos] = useState<{ x: number; y: number } | null>(null)
 
-  // Match pairs state
+  // Match pairs state (Bidirectional)
   const [matchLeftItems, setMatchLeftItems] = useState<Array<{ id: number; text: string }>>([])
   const [matchRightItems, setMatchRightItems] = useState<Array<{ id: number; text: string }>>([])
-  const [matchLeftIndex, setMatchLeftIndex] = useState<number | null>(null)
+  const [selectedLeftIdx, setSelectedLeftIdx] = useState<number | null>(null)
+  const [selectedRightIdx, setSelectedRightIdx] = useState<number | null>(null)
   const [matchMatches, setMatchMatches] = useState<Record<number, number>>({}) // leftIdx -> rightIdx
 
   // Word-tile / Concept-tile state
   const [wordTiles, setWordTiles] = useState<string[]>([])
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
 
-  // ─── Effect: load type-specific state ─────────────────────────────────────────
+  // ─── Effect: load type-specific state exactly once per question content ──────
   useEffect(() => {
     setPinPos(null)
-    setMatchLeftIndex(null)
+    setSelectedLeftIdx(null)
+    setSelectedRightIdx(null)
     setMatchMatches({})
     setSelectedWord(null)
 
@@ -163,7 +172,7 @@ export function AnswerControls({
       const lefts = pairs.map((p, idx) => ({ id: idx, text: p.left }))
       const rights = pairs.map((p, idx) => ({ id: idx, text: p.right }))
 
-      // Shuffle right definitions
+      // Shuffle right definitions (Fisher-Yates) once
       const shuffledRights = [...rights]
       for (let i = shuffledRights.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
@@ -219,7 +228,7 @@ export function AnswerControls({
         merged = ['Opción A', 'Opción B', 'Opción C', 'Opción D']
       }
 
-      // Shuffle tiles (Fisher-Yates)
+      // Shuffle tiles (Fisher-Yates) once
       const tiles = [...merged]
       for (let i = tiles.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1))
@@ -234,7 +243,7 @@ export function AnswerControls({
     } else {
       setWordTiles([])
     }
-  }, [exerciseType, options, answerJson])
+  }, [contentKey])
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
   const handleSelectMcTf = (index: number) => {
@@ -306,34 +315,63 @@ export function AnswerControls({
     if (hasSubmitted || disabled) return
     sound.playWheelTick()
 
-    // If already paired, clicking allows re-selecting or unpairing
+    // If already paired, unpair it
     if (matchMatches[leftIdx] !== undefined) {
-      setMatchLeftIndex(leftIdx)
+      handleUnpairMatch(leftIdx)
       return
     }
 
-    setMatchLeftIndex((prev) => (prev === leftIdx ? null : leftIdx))
+    // If a right item was already selected, link them!
+    if (selectedRightIdx !== null) {
+      sound.playCorrect()
+      setMatchMatches((prev) => {
+        const next = { ...prev }
+        // Clean any other left that was mapped to this right
+        for (const [k, v] of Object.entries(next)) {
+          if (v === selectedRightIdx) delete next[Number(k)]
+        }
+        next[leftIdx] = selectedRightIdx
+        return next
+      })
+      setSelectedLeftIdx(null)
+      setSelectedRightIdx(null)
+      return
+    }
+
+    // Toggle selection
+    setSelectedLeftIdx((prev) => (prev === leftIdx ? null : leftIdx))
   }
 
   const handlePickMatchRight = (rightIdx: number) => {
     if (hasSubmitted || disabled) return
+    sound.playWheelTick()
 
-    // If a left item is currently selected, link them
-    if (matchLeftIndex !== null) {
+    // If already paired, find its left and unpair it
+    const existingLeft = Object.entries(matchMatches).find(([_, rVal]) => rVal === rightIdx)
+    if (existingLeft) {
+      handleUnpairMatch(Number(existingLeft[0]))
+      return
+    }
+
+    // If a left item was already selected, link them!
+    if (selectedLeftIdx !== null) {
       sound.playCorrect()
       setMatchMatches((prev) => {
         const next = { ...prev }
-        // If another left was using this right, remove it
+        // Clean any other left that was mapped to this right
         for (const [k, v] of Object.entries(next)) {
-          if (v === rightIdx) {
-            delete next[Number(k)]
-          }
+          if (v === rightIdx) delete next[Number(k)]
         }
-        next[matchLeftIndex] = rightIdx
+        next[selectedLeftIdx] = rightIdx
         return next
       })
-      setMatchLeftIndex(null)
+      setSelectedLeftIdx(null)
+      setSelectedRightIdx(null)
+      return
     }
+
+    // Toggle selection
+    setSelectedRightIdx((prev) => (prev === rightIdx ? null : rightIdx))
   }
 
   const handleUnpairMatch = (leftIdx: number) => {
@@ -344,9 +382,8 @@ export function AnswerControls({
       delete next[leftIdx]
       return next
     })
-    if (matchLeftIndex === leftIdx) {
-      setMatchLeftIndex(null)
-    }
+    if (selectedLeftIdx === leftIdx) setSelectedLeftIdx(null)
+    setSelectedRightIdx(null)
   }
 
   const handleSubmitMatch = () => {
@@ -603,7 +640,7 @@ export function AnswerControls({
     )
   }
 
-  // ─── Match Pairs ────────────────────────────────────────────────────────────
+  // ─── Match Pairs (Bidirectional) ───────────────────────────────────────────
   if (exerciseType === 'match') {
     const totalPairs = matchLeftItems.length
     const matchedCount = Object.keys(matchMatches).length
@@ -613,12 +650,16 @@ export function AnswerControls({
         <div className="text-center space-y-1">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
             <Shuffle className="w-4 h-4" />
-            1. Toca un Concepto (izquierda) • 2. Toca su Definición (derecha)
+            Toca un Concepto (izquierda) y su Definición (derecha) o viceversa
           </span>
           <p className="text-[11px] text-slate-400">
-            {matchLeftIndex !== null ? (
+            {selectedLeftIdx !== null ? (
               <span className="text-amber-400 font-bold animate-pulse">
                 👉 Ahora selecciona la definición correspondiente en la columna derecha
+              </span>
+            ) : selectedRightIdx !== null ? (
+              <span className="text-amber-400 font-bold animate-pulse">
+                👉 Ahora selecciona el concepto correspondiente en la columna izquierda
               </span>
             ) : matchedCount === totalPairs && totalPairs > 0 ? (
               <span className="text-emerald-400 font-bold">
@@ -639,7 +680,7 @@ export function AnswerControls({
             {matchLeftItems.map((lItem, leftIdx) => {
               const matchedRightIdx = matchMatches[leftIdx]
               const isMatched = matchedRightIdx !== undefined
-              const isSelected = matchLeftIndex === leftIdx
+              const isSelected = selectedLeftIdx === leftIdx
               const pairColor = isMatched ? PAIR_COLORS[leftIdx % PAIR_COLORS.length] : null
 
               return (
@@ -653,7 +694,9 @@ export function AnswerControls({
                         ? 'bg-indigo-600/40 border-indigo-400 text-white ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
                         : isMatched
                           ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md`
-                          : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
+                          : selectedRightIdx !== null
+                            ? 'bg-slate-900 border-indigo-500/80 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 animate-pulse'
+                            : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
                     }`}
                   >
                     <span className="leading-snug">{lItem.text || `Concepto ${leftIdx + 1}`}</span>
@@ -671,7 +714,7 @@ export function AnswerControls({
                             e.stopPropagation()
                             handleUnpairMatch(leftIdx)
                           }}
-                          className="text-slate-400 hover:text-rose-400 p-0.5"
+                          className="text-slate-400 hover:text-rose-400 p-0.5 cursor-pointer"
                           title="Desemparejar"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -694,40 +737,50 @@ export function AnswerControls({
               const pairedLeftEntry = Object.entries(matchMatches).find(([_, rVal]) => rVal === rightIdx)
               const isPaired = pairedLeftEntry !== undefined
               const pairedLeftIdx = isPaired ? Number(pairedLeftEntry[0]) : null
+              const isSelected = selectedRightIdx === rightIdx
               const pairColor =
                 pairedLeftIdx !== null ? PAIR_COLORS[pairedLeftIdx % PAIR_COLORS.length] : null
-              const isTargetable = matchLeftIndex !== null && !isPaired
 
               return (
-                <button
-                  key={`right-${rightIdx}`}
-                  type="button"
-                  disabled={hasSubmitted || disabled || (matchLeftIndex === null && !isPaired)}
-                  onClick={() => {
-                    if (isPaired && pairedLeftIdx !== null) {
-                      handleUnpairMatch(pairedLeftIdx)
-                    } else {
-                      handlePickMatchRight(rightIdx)
-                    }
-                  }}
-                  className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-semibold transition-all select-none min-h-[56px] flex items-center justify-between gap-2 ${
-                    isPaired
-                      ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md cursor-pointer`
-                      : isTargetable
-                        ? 'bg-slate-900 border-indigo-500 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 cursor-pointer animate-pulse'
-                        : 'bg-slate-950/60 border-slate-800/80 text-slate-400 cursor-not-allowed opacity-75'
-                  }`}
-                >
-                  <span className="leading-snug">{rItem.text || `Definición ${rightIdx + 1}`}</span>
+                <div key={`right-${rightIdx}`} className="relative group">
+                  <button
+                    type="button"
+                    disabled={hasSubmitted || disabled}
+                    onClick={() => handlePickMatchRight(rightIdx)}
+                    className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-semibold transition-all select-none min-h-[56px] flex items-center justify-between gap-2 cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-600/40 border-indigo-400 text-white ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
+                        : isPaired
+                          ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md`
+                          : selectedLeftIdx !== null
+                            ? 'bg-slate-900 border-indigo-500 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 animate-pulse'
+                            : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
+                    }`}
+                  >
+                    <span className="leading-snug">{rItem.text || `Definición ${rightIdx + 1}`}</span>
 
-                  {isPaired && pairColor && (
-                    <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-black shrink-0 ${pairColor.badge}`}
-                    >
-                      {pairColor.label}
-                    </span>
-                  )}
-                </button>
+                    {isPaired && pairColor && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-black ${pairColor.badge}`}
+                        >
+                          {pairColor.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (pairedLeftIdx !== null) handleUnpairMatch(pairedLeftIdx)
+                          }}
+                          className="text-slate-400 hover:text-rose-400 p-0.5 cursor-pointer"
+                          title="Desemparejar"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -737,8 +790,15 @@ export function AnswerControls({
           <span>
             Pares completados: <b className="text-white">{matchedCount}</b> / {totalPairs}
           </span>
-          {matchLeftIndex !== null && (
-            <span className="text-indigo-400 font-bold">Seleccionando par para #{matchLeftIndex + 1}</span>
+          {selectedLeftIdx !== null && (
+            <span className="text-indigo-400 font-bold">
+              Seleccionando par para Concepto #{selectedLeftIdx + 1}
+            </span>
+          )}
+          {selectedRightIdx !== null && (
+            <span className="text-indigo-400 font-bold">
+              Seleccionando par para Definición #{selectedRightIdx + 1}
+            </span>
           )}
         </div>
 

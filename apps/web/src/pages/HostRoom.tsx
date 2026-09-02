@@ -46,7 +46,12 @@ export function HostRoom() {
   const [_totalParticipants, setTotalParticipants] = useState(0)
 
   // New Kahoot flow states
-  const [preCountdown, setPreCountdown] = useState<number | null>(null)
+  const [preCountdown, setPreCountdownState] = useState<number | null>(null)
+  const preCountdownRef = useRef<number | null>(null)
+  const setPreCountdown = (val: number | null) => {
+    preCountdownRef.current = val
+    setPreCountdownState(val)
+  }
   const [distribution, setDistribution] = useState<
     Array<{ optionIndex: number; count: number; label?: string }>
   >([])
@@ -140,7 +145,7 @@ export function HostRoom() {
             break
 
           case 'TIMER_TICK':
-            if (preCountdown !== null) {
+            if (preCountdownRef.current !== null && preCountdownRef.current > 0) {
               setPreCountdown(msg.remainingSec)
               if (msg.remainingSec <= 3 && msg.remainingSec > 0) {
                 sound.playCountdownDramatic()

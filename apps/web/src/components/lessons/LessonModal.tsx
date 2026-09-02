@@ -21,11 +21,13 @@ import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Input } from '../ui/Input'
 import { MarkdownText } from '../ui/MarkdownText'
+import { CustomSelect } from '../ui/Select'
 
 interface LessonModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   classId: string
+  classes?: Array<{ id: string; name: string; code: string }>
   lessonToEdit?: {
     id: string
     title: string
@@ -35,13 +37,22 @@ interface LessonModalProps {
   onLessonSaved?: () => void
 }
 
-export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLessonSaved }: LessonModalProps) {
+export function LessonModal({
+  open,
+  onOpenChange,
+  classId,
+  classes = [],
+  lessonToEdit,
+  onLessonSaved,
+}: LessonModalProps) {
+  const [activeClassId, setActiveClassId] = useState(classId || classes[0]?.id || '')
   const [title, setTitle] = useState('')
   const [materialContent, setMaterialContent] = useState('')
   const [materialFile, setMaterialFile] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [activeEditorTab, setActiveEditorTab] = useState<'write' | 'preview' | 'split'>('write')
   const [attachments, setAttachments] = useState<Array<{ name: string; url: string; type: 'pdf' | 'image' }>>(
@@ -54,10 +65,29 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setActiveClassId(classId || classes[0]?.id || '')
+    setFormError(null)
+    setSummaryError(null)
+
     if (lessonToEdit) {
       setTitle(lessonToEdit.title)
       setMaterialContent(lessonToEdit.materialContent || '')
       setMaterialFile(lessonToEdit.materialFile || null)
+      if (lessonToEdit.materialFile) {
+        const isPdf =
+          lessonToEdit.materialFile.toLowerCase().endsWith('.pdf') ||
+          lessonToEdit.materialFile.toLowerCase().includes('.pdf')
+        const fileName = lessonToEdit.materialFile.split('/').pop() || 'Documento adjunto'
+        setAttachments([
+          {
+            name: fileName,
+            url: lessonToEdit.materialFile,
+            type: isPdf ? 'pdf' : 'image',
+          },
+        ])
+      } else {
+        setAttachments([])
+      }
     } else {
       setTitle('')
       setMaterialContent('')
@@ -66,7 +96,7 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
       setLinks([])
       setActiveEditorTab('write')
     }
-  }, [lessonToEdit, open])
+  }, [lessonToEdit, open, classId, classes])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -169,36 +199,55 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !classId) return
+    setFormError(null)
+
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      setFormError('Por favor ingresa un título para la lección.')
+      return
+    }
+    if (trimmedTitle.length < 2) {
+      setFormError('El título de la lección debe tener al menos 2 caracteres.')
+      return
+    }
+
+    const targetClassId = activeClassId || classId || classes[0]?.id
+    if (!targetClassId) {
+      setFormError('Debes seleccionar o crear una clase para poder guardar la lección.')
+      return
+    }
 
     setSaving(true)
     try {
       if (lessonToEdit) {
         // Edit existing lesson
-        await apiFetch(`/api/groups/${classId}/lessons/${lessonToEdit.id}`, {
+        await apiFetch(`/api/groups/${targetClassId}/lessons/${lessonToEdit.id}`, {
           method: 'PATCH',
           body: JSON.stringify({
-            title: title.trim(),
+            title: trimmedTitle,
             materialContent: materialContent.trim(),
             materialFile: materialFile || null,
           }),
         })
       } else {
         // Create new lesson
-        await apiFetch(`/api/groups/${classId}/lessons`, {
+        await apiFetch(`/api/groups/${targetClassId}/lessons`, {
           method: 'POST',
           body: JSON.stringify({
-            title: title.trim(),
+            title: trimmedTitle,
             materialContent: materialContent.trim(),
             materialFile: materialFile || null,
             lang: 'es',
           }),
         })
       }
+      sound.playVictory()
+      triggerConfetti()
       onLessonSaved?.()
       onOpenChange(false)
     } catch (err: any) {
-      alert(err.message || 'Error al guardar la lección')
+      sound.playIncorrect()
+      setFormError(err.message || 'Error al guardar la lección. Por favor verifica los datos.')
     } finally {
       setSaving(false)
     }
@@ -213,7 +262,30 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
       className="max-w-4xl"
     >
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+        {formError && (
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2.5 text-xs text-rose-300">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{formError}</span>
+          </div>
+        )}
+
         <div className="space-y-4">
+          {classes.length > 1 && (
+            <div>
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                Clase de Destino
+              </label>
+              <CustomSelect
+                value={activeClassId || classId || classes[0]?.id || ''}
+                onChange={setActiveClassId}
+                options={classes.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} (${c.code})`,
+                }))}
+              />
+            </div>
+          )}
+
           <div>
             <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
               Título de la Lección

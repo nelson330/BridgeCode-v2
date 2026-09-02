@@ -716,15 +716,56 @@ export function Dashboard() {
               variant="primary"
               size="sm"
               onClick={() => {
+                if (classes.length === 0) {
+                  setIsCreateClassOpen(true)
+                  return
+                }
+                if (!selectedClassId && classes.length > 0) {
+                  setSelectedClassId(classes[0].id)
+                }
                 setLessonToEdit(null)
                 setIsLessonModalOpen(true)
               }}
-              className="gap-2"
+              className="gap-2 shadow-lg shadow-indigo-500/20"
             >
               <Plus className="w-4 h-4" />
               <span>Crear Lección</span>
             </Button>
           </div>
+
+          {lessons.length === 0 && (
+            <div className="p-12 text-center rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mx-auto text-indigo-400">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-white">No hay lecciones en esta clase</h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Crea tu primera lección para agregar material de estudio, subir documentos PDF y diseñar
+                  ejercicios interactivos.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (classes.length === 0) {
+                    setIsCreateClassOpen(true)
+                    return
+                  }
+                  if (!selectedClassId && classes.length > 0) {
+                    setSelectedClassId(classes[0].id)
+                  }
+                  setLessonToEdit(null)
+                  setIsLessonModalOpen(true)
+                }}
+                className="gap-2 mx-auto shadow-lg shadow-indigo-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Crear Primera Lección</span>
+              </Button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6">
             {lessons.map((lesson) => {
@@ -1368,8 +1409,12 @@ export function Dashboard() {
           if (!open) setLessonToEdit(null)
         }}
         classId={selectedClassId}
+        classes={classes}
         lessonToEdit={lessonToEdit}
-        onLessonSaved={loadClassData}
+        onLessonSaved={() => {
+          loadClassData()
+          loadClasses()
+        }}
       />
 
       {/* MODAL 7: CONSTRUCTOR MANUAL DE EJERCICIOS (CREAR / EDITAR) */}

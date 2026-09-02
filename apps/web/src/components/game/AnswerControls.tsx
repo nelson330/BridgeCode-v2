@@ -4,22 +4,24 @@ import {
   Check,
   Circle,
   Diamond,
+  HelpCircle,
   ListOrdered,
   Loader2,
   MapPin,
   PenTool,
   Send,
+  Shuffle,
   SlidersHorizontal,
   Sparkles,
   Square,
   Triangle,
+  X,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { sound } from '../../lib/audio-synth'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
-import { MarkdownText } from '../ui/MarkdownText'
 
 interface AnswerControlsProps {
   exerciseType: string
@@ -33,34 +35,33 @@ interface AnswerControlsProps {
 }
 
 const BUTTON_CONFIGS = [
+  { bg: 'bg-rose-600 active:bg-rose-700', border: 'border-rose-400', icon: Triangle, label: 'A' },
+  { bg: 'bg-blue-600 active:bg-blue-700', border: 'border-blue-400', icon: Diamond, label: 'B' },
+  { bg: 'bg-amber-500 active:bg-amber-600', border: 'border-amber-300', icon: Circle, label: 'C' },
+  { bg: 'bg-emerald-600 active:bg-emerald-700', border: 'border-emerald-400', icon: Square, label: 'D' },
+]
+
+const TILE_COLORS = [
+  'bg-indigo-600 hover:bg-indigo-500 border-indigo-400 text-white',
+  'bg-emerald-600 hover:bg-emerald-500 border-emerald-400 text-white',
+  'bg-amber-500 hover:bg-amber-400 border-amber-300 text-slate-950',
+  'bg-rose-600 hover:bg-rose-500 border-rose-400 text-white',
+  'bg-purple-600 hover:bg-purple-500 border-purple-400 text-white',
+  'bg-cyan-600 hover:bg-cyan-500 border-cyan-400 text-white',
+]
+
+const PAIR_COLORS = [
+  { bg: 'bg-indigo-950/80', border: 'border-indigo-500', badge: 'bg-indigo-500 text-white', label: 'Par 1' },
   {
-    bg: 'bg-rose-600 active:bg-rose-700',
-    border: 'border-rose-400',
-    icon: Triangle,
-    pattern: 'pattern-triangle',
-    label: 'A',
+    bg: 'bg-emerald-950/80',
+    border: 'border-emerald-500',
+    badge: 'bg-emerald-500 text-slate-950',
+    label: 'Par 2',
   },
-  {
-    bg: 'bg-blue-600 active:bg-blue-700',
-    border: 'border-blue-400',
-    icon: Diamond,
-    pattern: 'pattern-diamond',
-    label: 'B',
-  },
-  {
-    bg: 'bg-amber-500 active:bg-amber-600',
-    border: 'border-amber-300',
-    icon: Circle,
-    pattern: 'pattern-circle',
-    label: 'C',
-  },
-  {
-    bg: 'bg-emerald-600 active:bg-emerald-700',
-    border: 'border-emerald-400',
-    icon: Square,
-    pattern: 'pattern-square',
-    label: 'D',
-  },
+  { bg: 'bg-amber-950/80', border: 'border-amber-500', badge: 'bg-amber-500 text-slate-950', label: 'Par 3' },
+  { bg: 'bg-rose-950/80', border: 'border-rose-500', badge: 'bg-rose-500 text-white', label: 'Par 4' },
+  { bg: 'bg-purple-950/80', border: 'border-purple-500', badge: 'bg-purple-500 text-white', label: 'Par 5' },
+  { bg: 'bg-cyan-950/80', border: 'border-cyan-500', badge: 'bg-cyan-500 text-slate-950', label: 'Par 6' },
 ]
 
 export function AnswerControls({
@@ -73,6 +74,7 @@ export function AnswerControls({
   mediaUrl,
   answerJson,
 }: AnswerControlsProps) {
+  // ─── All hooks must be at the top ────────────────────────────────────────────
   const [typedText, setTypedText] = useState('')
   const [orderItems, setOrderItems] = useState<Array<{ id: number; text: string }>>([])
 
@@ -83,33 +85,147 @@ export function AnswerControls({
   // Pin drop state
   const [pinPos, setPinPos] = useState<{ x: number; y: number } | null>(null)
 
+  // Match pairs state
+  const [matchLeftItems, setMatchLeftItems] = useState<Array<{ id: number; text: string }>>([])
+  const [matchRightItems, setMatchRightItems] = useState<Array<{ id: number; text: string }>>([])
+  const [matchLeftIndex, setMatchLeftIndex] = useState<number | null>(null)
+  const [matchMatches, setMatchMatches] = useState<Record<number, number>>({}) // leftIdx -> rightIdx
+
+  // Word-tile state (fill / type_answer)
+  const [wordTiles, setWordTiles] = useState<string[]>([])
+  const [selectedWord, setSelectedWord] = useState<string | null>(null)
+
+  // ─── Effect: load type-specific state ─────────────────────────────────────────
   useEffect(() => {
     setTypedText('')
-    if (exerciseType === 'order' && Array.isArray(options)) {
-      setOrderItems(
-        options.map((opt, idx) => ({ id: idx, text: typeof opt === 'string' ? opt : JSON.stringify(opt) }))
-      )
-    }
-    if (exerciseType === 'slider' && answerJson) {
+    setPinPos(null)
+    setMatchLeftIndex(null)
+    setMatchMatches({})
+    setSelectedWord(null)
+
+    let parsed: any = null
+    if (answerJson) {
       try {
-        const cfg = JSON.parse(answerJson)
-        const min = cfg.min ?? 0
-        const max = cfg.max ?? 100
-        setSliderConfig({ min, max })
-        setSliderValue(Math.round((min + max) / 2))
+        parsed = typeof answerJson === 'string' ? JSON.parse(answerJson) : answerJson
       } catch {
-        // ignore
+        parsed = null
       }
     }
-    setPinPos(null)
+
+    // 1. ORDER: parse and shuffle initial items so student actively orders them
+    if (exerciseType === 'order' && Array.isArray(options)) {
+      const items = options.map((opt, idx) => ({
+        id: idx,
+        text: typeof opt === 'string' ? opt : JSON.stringify(opt),
+      }))
+
+      // Shuffle initially
+      const shuffled = [...items]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const temp = shuffled[i]
+        const target = shuffled[j]
+        if (temp !== undefined && target !== undefined) {
+          shuffled[i] = target
+          shuffled[j] = temp
+        }
+      }
+      setOrderItems(shuffled)
+    } else {
+      setOrderItems([])
+    }
+
+    // 2. SLIDER: configure bounds
+    if (exerciseType === 'slider' && parsed) {
+      const min = parsed.min ?? 0
+      const max = parsed.max ?? 100
+      setSliderConfig({ min, max })
+      setSliderValue(Math.round((min + max) / 2))
+    }
+
+    // 3. MATCH: parse left concepts and shuffled right definitions
+    if (exerciseType === 'match') {
+      const pairs: Array<{ left: string; right: string }> = (Array.isArray(options) ? options : []).map(
+        (p: any) =>
+          typeof p === 'object' && p !== null
+            ? {
+                left: String(p.left ?? p.term ?? p.concept ?? ''),
+                right: String(p.right ?? p.definition ?? ''),
+              }
+            : { left: String(p), right: '' }
+      )
+
+      if (pairs.length === 0 && parsed?.pairs && Array.isArray(parsed.pairs)) {
+        for (const p of parsed.pairs) {
+          pairs.push({
+            left: String(p.left ?? p.term ?? p.concept ?? ''),
+            right: String(p.right ?? p.definition ?? ''),
+          })
+        }
+      }
+
+      const lefts = pairs.map((p, idx) => ({ id: idx, text: p.left }))
+      const rights = pairs.map((p, idx) => ({ id: idx, text: p.right }))
+
+      // Shuffle right definitions
+      const shuffledRights = [...rights]
+      for (let i = shuffledRights.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const temp = shuffledRights[i]
+        const target = shuffledRights[j]
+        if (temp !== undefined && target !== undefined) {
+          shuffledRights[i] = target
+          shuffledRights[j] = temp
+        }
+      }
+
+      setMatchLeftItems(lefts)
+      setMatchRightItems(shuffledRights)
+    } else {
+      setMatchLeftItems([])
+      setMatchRightItems([])
+    }
+
+    // 4. FILL / TYPE_ANSWER: word bank selection
+    if (exerciseType === 'fill' || exerciseType === 'type_answer') {
+      const valid: string[] = Array.isArray(parsed?.validAnswers)
+        ? parsed.validAnswers.map((s: any) => String(s))
+        : parsed?.validAnswer
+          ? [String(parsed.validAnswer)]
+          : []
+
+      const distractorPool: string[] = Array.isArray(options)
+        ? options
+            .map((o: any) => (typeof o === 'string' ? o : String(o?.text ?? o?.term ?? o?.word ?? '')))
+            .filter(Boolean)
+        : []
+
+      const merged = Array.from(new Set([...valid, ...distractorPool])).filter((w) => w.trim().length > 0)
+
+      // Shuffle tiles (Fisher-Yates)
+      const tiles = [...merged]
+      for (let i = tiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        const temp = tiles[i]
+        const target = tiles[j]
+        if (temp !== undefined && target !== undefined) {
+          tiles[i] = target
+          tiles[j] = temp
+        }
+      }
+      setWordTiles(tiles)
+    } else {
+      setWordTiles([])
+    }
   }, [exerciseType, options, answerJson])
 
+  // ─── Handlers ─────────────────────────────────────────────────────────────────
   const handleSelectMcTf = (index: number) => {
     if (hasSubmitted || disabled) return
     sound.playPowerup()
 
     let answerJsonStr = ''
-    if (exerciseType === 'mc') {
+    if (exerciseType === 'mc' || exerciseType === 'poll') {
       answerJsonStr = JSON.stringify({ correctIndex: index })
     } else if (exerciseType === 'tf') {
       answerJsonStr = JSON.stringify({ isTrue: index === 0 })
@@ -118,13 +234,18 @@ export function AnswerControls({
     onSubmit(answerJsonStr)
   }
 
-  const handleSubmitText = (e?: React.FormEvent) => {
+  const handlePickWordTile = (word: string) => {
+    if (hasSubmitted || disabled) return
+    setSelectedWord(word)
+    sound.playPowerup()
+    onSubmit(JSON.stringify({ text: word.trim() }))
+  }
+
+  const handleSubmitTyped = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (hasSubmitted || disabled || !typedText.trim()) return
     sound.playPowerup()
-
-    const answerJsonStr = JSON.stringify({ text: typedText.trim() })
-    onSubmit(answerJsonStr)
+    onSubmit(JSON.stringify({ text: typedText.trim() }))
   }
 
   const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
@@ -147,8 +268,7 @@ export function AnswerControls({
     sound.playPowerup()
 
     const orderIndices = orderItems.map((item) => item.id)
-    const answerJsonStr = JSON.stringify({ correctOrder: orderIndices })
-    onSubmit(answerJsonStr)
+    onSubmit(JSON.stringify({ correctOrder: orderIndices }))
   }
 
   const handleSubmitSlider = () => {
@@ -178,12 +298,78 @@ export function AnswerControls({
     onSubmit(JSON.stringify({ text: typedText.trim() }))
   }
 
-  // Slide: no answer needed, just show content
+  const handlePickMatchLeft = (leftIdx: number) => {
+    if (hasSubmitted || disabled) return
+    sound.playWheelTick()
+
+    // If already paired, clicking allows re-selecting or unpairing
+    if (matchMatches[leftIdx] !== undefined) {
+      setMatchLeftIndex(leftIdx)
+      return
+    }
+
+    setMatchLeftIndex((prev) => (prev === leftIdx ? null : leftIdx))
+  }
+
+  const handlePickMatchRight = (rightIdx: number) => {
+    if (hasSubmitted || disabled) return
+
+    // If a left item is currently selected, link them
+    if (matchLeftIndex !== null) {
+      sound.playCorrect()
+      setMatchMatches((prev) => {
+        const next = { ...prev }
+        // If another left was using this right, remove it
+        for (const [k, v] of Object.entries(next)) {
+          if (v === rightIdx) {
+            delete next[Number(k)]
+          }
+        }
+        next[matchLeftIndex] = rightIdx
+        return next
+      })
+      setMatchLeftIndex(null)
+    }
+  }
+
+  const handleUnpairMatch = (leftIdx: number) => {
+    if (hasSubmitted || disabled) return
+    sound.playWheelTick()
+    setMatchMatches((prev) => {
+      const next = { ...prev }
+      delete next[leftIdx]
+      return next
+    })
+    if (matchLeftIndex === leftIdx) {
+      setMatchLeftIndex(null)
+    }
+  }
+
+  const handleSubmitMatch = () => {
+    if (hasSubmitted || disabled) return
+    sound.playPowerup()
+
+    // Construct submitted pair objects: [{ left: "Concept", right: "Definition" }]
+    const submittedPairs = matchLeftItems.map((lItem, idx) => {
+      const rightIdx = matchMatches[idx]
+      const rItem = rightIdx !== undefined ? matchRightItems[rightIdx] : null
+      return {
+        left: lItem.text,
+        right: rItem ? rItem.text : '',
+      }
+    })
+
+    onSubmit(JSON.stringify({ pairs: submittedPairs }))
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────────
+
+  // Slide: no answer needed
   if (exerciseType === 'slide') {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 rounded-3xl bg-indigo-950/40 border border-indigo-800/40">
         <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
-        <p className="text-slate-400 text-sm">Leyendo información...</p>
+        <p className="text-slate-400 text-sm">Diapositiva informativa...</p>
       </div>
     )
   }
@@ -201,52 +387,84 @@ export function AnswerControls({
         <h3 className="font-display font-black text-2xl text-white">¡Respuesta Enviada!</h3>
         <p className="text-slate-400 text-sm flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
-          Esperando a que termine el tiempo...
+          Procesando resultado...
         </p>
       </div>
     )
   }
 
-  // Type Answer (similar to fill but mobile-optimized)
-  if (exerciseType === 'type_answer') {
+  // ─── Word-tile picker (fill / type_answer): choose from word options ─────────
+  if (exerciseType === 'fill' || exerciseType === 'type_answer') {
     return (
-      <form onSubmit={handleSubmitText} className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
-            Escribe la respuesta exacta:
-          </label>
-          <Input
-            type="text"
-            placeholder="Tu respuesta..."
-            value={typedText}
-            onChange={(e) => setTypedText(e.target.value)}
-            disabled={disabled}
-            className="text-center font-display font-bold text-xl py-3 text-white"
-            autoFocus
-          />
+      <div className="space-y-4 w-full">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
+          <div className="text-center space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
+              {exerciseType === 'type_answer'
+                ? 'Elige la respuesta exacta:'
+                : 'Elige la palabra correcta para completar el espacio:'}
+            </span>
+            <p className="text-[11px] text-slate-400">Toca la palabra que completa el enunciado [___]</p>
+          </div>
+
+          {wordTiles.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+              {wordTiles.map((word, idx) => {
+                const isChosen = selectedWord === word
+                return (
+                  <motion.button
+                    key={word}
+                    type="button"
+                    onClick={() => handlePickWordTile(word)}
+                    disabled={disabled}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.94 }}
+                    className={`p-3.5 sm:p-4 rounded-2xl border-2 font-display font-bold text-sm sm:text-base shadow-lg transition-all cursor-pointer select-none flex items-center justify-center gap-2 text-center ${
+                      isChosen
+                        ? 'bg-indigo-600 border-indigo-300 ring-4 ring-indigo-500/40 text-white'
+                        : TILE_COLORS[idx % TILE_COLORS.length]
+                    }`}
+                  >
+                    <span>{word}</span>
+                  </motion.button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Input
+                type="text"
+                placeholder="Escribe tu respuesta aquí..."
+                value={typedText}
+                onChange={(e) => setTypedText(e.target.value)}
+                disabled={disabled}
+                className="text-center font-display font-bold text-xl py-3 text-white"
+                autoFocus
+              />
+              <Button
+                type="button"
+                onClick={handleSubmitTyped}
+                disabled={disabled || !typedText.trim()}
+                className="w-full gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Enviar
+              </Button>
+            </div>
+          )}
         </div>
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          disabled={disabled || !typedText.trim()}
-          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
-        >
-          <Send className="w-5 h-5" />
-          <span>Enviar Respuesta</span>
-        </Button>
-      </form>
+      </div>
     )
   }
 
-  // Slider
+  // ─── Slider ──────────────────────────────────────────────────────────────────
   if (exerciseType === 'slider') {
     return (
       <div className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
           <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center flex items-center justify-center gap-1.5">
             <SlidersHorizontal className="w-4 h-4" />
-            Ajusta el valor:
+            Ajusta el valor numérico:
           </label>
           <div className="text-center">
             <span className="font-display font-black text-5xl text-white">{sliderValue}</span>
@@ -260,7 +478,7 @@ export function AnswerControls({
             disabled={disabled}
             className="w-full h-3 rounded-full appearance-none bg-slate-700 cursor-pointer accent-indigo-500"
           />
-          <div className="flex justify-between text-xs text-slate-500">
+          <div className="flex justify-between text-xs text-slate-500 font-mono font-bold">
             <span>{sliderConfig.min}</span>
             <span>{sliderConfig.max}</span>
           </div>
@@ -272,14 +490,14 @@ export function AnswerControls({
           disabled={disabled}
           className="w-full gap-2 text-base font-bold py-4 shadow-xl"
         >
-          <Check className="w-5 h-5" />
+          <Check className="w-5 h-6" />
           <span>Confirmar Valor</span>
         </Button>
       </div>
     )
   }
 
-  // Pin Drop
+  // ─── Pin Drop ───────────────────────────────────────────────────────────────
   if (exerciseType === 'pin_drop') {
     return (
       <div className="space-y-4 w-full">
@@ -314,14 +532,14 @@ export function AnswerControls({
           disabled={disabled || !pinPos}
           className="w-full gap-2 text-base font-bold py-4 shadow-xl"
         >
-          <Check className="w-5 h-5" />
+          <Check className="w-5 h-6" />
           <span>Confirmar Ubicación</span>
         </Button>
       </div>
     )
   }
 
-  // Word Cloud
+  // ─── Word Cloud ─────────────────────────────────────────────────────────────
   if (exerciseType === 'word_cloud') {
     return (
       <form onSubmit={handleSubmitWordCloud} className="space-y-4 w-full">
@@ -354,84 +572,54 @@ export function AnswerControls({
     )
   }
 
-  // Fill in the blank
-  if (exerciseType === 'fill') {
-    return (
-      <form onSubmit={handleSubmitText} className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
-            Escribe la palabra que completa la oración:
-          </label>
-          <Input
-            type="text"
-            placeholder="Escribe tu respuesta aquí..."
-            value={typedText}
-            onChange={(e) => setTypedText(e.target.value)}
-            disabled={disabled}
-            className="text-center font-display font-bold text-xl py-3 text-white"
-            autoFocus
-          />
-        </div>
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          disabled={disabled || !typedText.trim()}
-          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
-        >
-          <Send className="w-5 h-5" />
-          <span>Enviar Respuesta</span>
-        </Button>
-      </form>
-    )
-  }
-
-  // Order
+  // ─── Order Sequence ─────────────────────────────────────────────────────────
   if (exerciseType === 'order') {
     return (
       <div className="space-y-4 w-full">
-        <div className="text-center">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-center gap-1">
+        <div className="text-center space-y-0.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
             <ListOrdered className="w-4 h-4" />
-            Usa las flechas para ordenar de primero a último:
+            Ordena los elementos usando las flechas:
           </span>
+          <p className="text-[11px] text-slate-400">
+            Mueve cada paso hacia arriba o hacia abajo para formar el orden correcto
+          </p>
         </div>
 
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-          {orderItems.map((item, idx) => (
-            <motion.div
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          {orderItems.map((item, index) => (
+            <div
               key={item.id}
-              layout
-              className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 text-sm"
+              className="p-3 sm:p-4 rounded-2xl bg-slate-900 border-2 border-slate-700/80 flex items-center justify-between gap-3 shadow-md"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-6 h-6 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 flex items-center justify-center font-bold text-xs shrink-0">
-                  {idx + 1}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <span className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-black text-xs flex items-center justify-center shrink-0 font-mono">
+                  {index + 1}
                 </span>
-                <span className="font-semibold text-white truncate">{item.text}</span>
+                <span className="text-sm sm:text-base font-bold text-white truncate">{item.text}</span>
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  onClick={() => handleMoveOrder(idx, 'up')}
-                  disabled={idx === 0 || disabled}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  disabled={disabled || index === 0}
+                  onClick={() => handleMoveOrder(index, 'up')}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
                   title="Mover arriba"
                 >
                   <ArrowUp className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleMoveOrder(idx, 'down')}
-                  disabled={idx === orderItems.length - 1 || disabled}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 cursor-pointer"
+                  disabled={disabled || index === orderItems.length - 1}
+                  onClick={() => handleMoveOrder(index, 'down')}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
                   title="Mover abajo"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </button>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 
@@ -443,111 +631,150 @@ export function AnswerControls({
           disabled={disabled || orderItems.length === 0}
           className="w-full gap-2 text-base font-bold py-4 shadow-xl"
         >
-          <Check className="w-5 h-5" />
-          <span>Confirmar Orden de los Pasos</span>
+          <Check className="w-5 h-6" />
+          <span>Confirmar Orden de la Secuencia</span>
         </Button>
       </div>
     )
   }
 
-  // Match Pairs
+  // ─── Match Pairs ────────────────────────────────────────────────────────────
   if (exerciseType === 'match') {
-    const pairs: Array<{ left: string; right: string }> = (Array.isArray(options) ? options : []).map(
-      (p: any) =>
-        typeof p === 'object' && p !== null
-          ? { left: String(p.left ?? p.term ?? ''), right: String(p.right ?? p.definition ?? '') }
-          : { left: String(p), right: '' }
-    )
-
-    const [leftIndex, setLeftIndex] = useState<number | null>(null)
-    const [matches, setMatches] = useState<Record<number, number>>({})
-
-    useEffect(() => {
-      setLeftIndex(null)
-      setMatches({})
-    }, [exerciseType, options])
-
-    const handlePickLeft = (idx: number) => {
-      if (hasSubmitted || disabled) return
-      sound.playWheelTick()
-      setLeftIndex(idx === leftIndex ? null : idx)
-    }
-
-    const handlePickRight = (rightIdx: number) => {
-      if (hasSubmitted || disabled || leftIndex === null) return
-      sound.playCorrect()
-      setMatches((prev) => ({ ...prev, [leftIndex]: rightIdx }))
-      setLeftIndex(null)
-    }
-
-    const handleSubmitMatch = () => {
-      if (hasSubmitted || disabled) return
-      sound.playPowerup()
-      const submission = pairs.map((_p, i) => matches[i] ?? -1)
-      onSubmit(JSON.stringify({ pairs: submission }))
-    }
-
-    const matchedRight = new Set(Object.values(matches).filter((v) => v >= 0))
+    const totalPairs = matchLeftItems.length
+    const matchedCount = Object.keys(matchMatches).length
 
     return (
       <div className="space-y-4 w-full">
-        <div className="text-center">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Empareja cada concepto de la izquierda con su definición:
+        <div className="text-center space-y-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+            <Shuffle className="w-4 h-4" />
+            1. Toca un Concepto (izquierda) • 2. Toca su Definición (derecha)
           </span>
+          <p className="text-[11px] text-slate-400">
+            {matchLeftIndex !== null ? (
+              <span className="text-amber-400 font-bold animate-pulse">
+                👉 Ahora selecciona la definición correspondiente en la columna derecha
+              </span>
+            ) : matchedCount === totalPairs && totalPairs > 0 ? (
+              <span className="text-emerald-400 font-bold">
+                ✓ ¡Todos los pares emparejados! Haz clic en Confirmar.
+              </span>
+            ) : (
+              <span>Empareja todos los conceptos con su definición correspondiente</span>
+            )}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 max-h-72 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+          {/* Left Column: Concepts */}
           <div className="space-y-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block text-center">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold text-center bg-slate-900/60 py-1 rounded-lg border border-slate-800">
               Concepto
-            </span>
-            {pairs.map((p, idx) => (
-              <button
-                key={`l-${idx}`}
-                type="button"
-                disabled={hasSubmitted || disabled}
-                onClick={() => handlePickLeft(idx)}
-                className={`w-full p-2.5 rounded-xl border-2 text-left text-sm font-bold transition-all cursor-pointer ${
-                  leftIndex === idx
-                    ? 'bg-indigo-600/30 border-indigo-400 text-white'
-                    : matches[idx] !== undefined
-                      ? 'bg-emerald-900/40 border-emerald-700 text-emerald-200'
-                      : 'bg-slate-900 border-slate-700 text-slate-200 hover:border-slate-500'
-                }`}
-              >
-                {p.left}
-                {matches[idx] !== undefined && pairs[matches[idx] as number] && (
-                  <span className="block text-[10px] text-emerald-400 mt-0.5">
-                    → {pairs[matches[idx] as number]?.right}
-                  </span>
-                )}
-              </button>
-            ))}
+            </div>
+            {matchLeftItems.map((lItem, leftIdx) => {
+              const matchedRightIdx = matchMatches[leftIdx]
+              const isMatched = matchedRightIdx !== undefined
+              const isSelected = matchLeftIndex === leftIdx
+              const pairColor = isMatched ? PAIR_COLORS[leftIdx % PAIR_COLORS.length] : null
+
+              return (
+                <div key={`left-${leftIdx}`} className="relative group">
+                  <button
+                    type="button"
+                    disabled={hasSubmitted || disabled}
+                    onClick={() => handlePickMatchLeft(leftIdx)}
+                    className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-bold transition-all cursor-pointer min-h-[56px] flex items-center justify-between gap-2 select-none ${
+                      isSelected
+                        ? 'bg-indigo-600/40 border-indigo-400 text-white ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
+                        : isMatched
+                          ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md`
+                          : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
+                    }`}
+                  >
+                    <span className="leading-snug">{lItem.text || `Concepto ${leftIdx + 1}`}</span>
+
+                    {isMatched && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-black ${pairColor?.badge}`}
+                        >
+                          {pairColor?.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleUnpairMatch(leftIdx)
+                          }}
+                          className="text-slate-400 hover:text-rose-400 p-0.5"
+                          title="Desemparejar"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </button>
+                </div>
+              )
+            })}
           </div>
 
+          {/* Right Column: Definitions */}
           <div className="space-y-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block text-center">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold text-center bg-slate-900/60 py-1 rounded-lg border border-slate-800">
               Definición
-            </span>
-            {pairs.map((p, idx) => (
-              <button
-                key={`r-${idx}`}
-                type="button"
-                disabled={hasSubmitted || disabled || leftIndex === null || matchedRight.has(idx)}
-                onClick={() => handlePickRight(idx)}
-                className={`w-full p-2.5 rounded-xl border-2 text-left text-sm transition-all cursor-pointer ${
-                  matchedRight.has(idx)
-                    ? 'bg-slate-950 border-slate-800 text-slate-500 opacity-50 cursor-not-allowed'
-                    : leftIndex !== null
-                      ? 'bg-slate-900 border-slate-700 text-slate-200 hover:border-indigo-500 hover:text-white'
-                      : 'bg-slate-900 border-slate-800 text-slate-300'
-                }`}
-              >
-                {p.right}
-              </button>
-            ))}
+            </div>
+            {matchRightItems.map((rItem, rightIdx) => {
+              // Check if any left item is paired to this right item
+              const pairedLeftEntry = Object.entries(matchMatches).find(([_, rVal]) => rVal === rightIdx)
+              const isPaired = pairedLeftEntry !== undefined
+              const pairedLeftIdx = isPaired ? Number(pairedLeftEntry[0]) : null
+              const pairColor =
+                pairedLeftIdx !== null ? PAIR_COLORS[pairedLeftIdx % PAIR_COLORS.length] : null
+              const isTargetable = matchLeftIndex !== null && !isPaired
+
+              return (
+                <button
+                  key={`right-${rightIdx}`}
+                  type="button"
+                  disabled={hasSubmitted || disabled || (matchLeftIndex === null && !isPaired)}
+                  onClick={() => {
+                    if (isPaired && pairedLeftIdx !== null) {
+                      handleUnpairMatch(pairedLeftIdx)
+                    } else {
+                      handlePickMatchRight(rightIdx)
+                    }
+                  }}
+                  className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-semibold transition-all select-none min-h-[56px] flex items-center justify-between gap-2 ${
+                    isPaired
+                      ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md cursor-pointer`
+                      : isTargetable
+                        ? 'bg-slate-900 border-indigo-500 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 cursor-pointer animate-pulse'
+                        : 'bg-slate-950/60 border-slate-800/80 text-slate-400 cursor-not-allowed opacity-75'
+                  }`}
+                >
+                  <span className="leading-snug">{rItem.text || `Definición ${rightIdx + 1}`}</span>
+
+                  {isPaired && pairColor && (
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono font-black shrink-0 ${pairColor.badge}`}
+                    >
+                      {pairColor.label}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+          <span>
+            Pares completados: <b className="text-white">{matchedCount}</b> / {totalPairs}
+          </span>
+          {matchLeftIndex !== null && (
+            <span className="text-indigo-400 font-bold">Seleccionando par para #{matchLeftIndex + 1}</span>
+          )}
         </div>
 
         <Button
@@ -555,21 +782,23 @@ export function AnswerControls({
           variant="primary"
           size="lg"
           onClick={handleSubmitMatch}
-          disabled={disabled || Object.keys(matches).length === 0}
+          disabled={disabled || matchedCount === 0}
           className="w-full gap-2 text-base font-bold py-4 shadow-xl"
         >
-          <Check className="w-5 h-5" />
-          <span>Confirmar Emparejamiento</span>
+          <Check className="w-5 h-6" />
+          <span>
+            Confirmar Emparejamiento ({matchedCount}/{totalPairs})
+          </span>
         </Button>
       </div>
     )
   }
 
-  // Open / Short
+  // ─── Open / Short ───────────────────────────────────────────────────────────
   if (exerciseType === 'open' || exerciseType === 'short') {
     return (
-      <form onSubmit={handleSubmitText} className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-2">
+      <form onSubmit={handleSubmitTyped} className="space-y-4 w-full">
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-2 shadow-xl">
           <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
             Escribe tu respuesta:
           </label>
@@ -596,28 +825,40 @@ export function AnswerControls({
     )
   }
 
-  // Default: MC & TF
+  // ─── Default: MC & TF ────────────────────────────────────────────────────────
   const count = exerciseType === 'tf' ? 2 : Math.min(optionsCount, 4)
   const buttons = BUTTON_CONFIGS.slice(0, count)
 
   return (
-    <div className="grid grid-cols-2 gap-4 w-full h-full min-h-[300px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full h-full min-h-[260px]">
       {buttons.map((btn, index) => {
         const Icon = btn.icon
-        const textLabel = exerciseType === 'tf' ? (index === 0 ? 'Verdadero' : 'Falso') : btn.label
+        const isTf = exerciseType === 'tf'
+        const optionText = typeof options?.[index] === 'string' ? options[index] : null
+        const textLabel = isTf ? (index === 0 ? 'Verdadero' : 'Falso') : optionText || btn.label
 
         return (
           <motion.button
             key={index}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.94 }}
             onClick={() => handleSelectMcTf(index)}
             disabled={disabled || hasSubmitted}
-            className={`flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-4 text-white shadow-2xl transition-transform cursor-pointer select-none ${btn.bg} ${btn.border} ${btn.pattern}`}
+            className={`flex items-center gap-4 p-5 sm:p-6 rounded-3xl border-4 text-white shadow-2xl transition-all cursor-pointer select-none text-left ${btn.bg} ${btn.border}`}
           >
-            <Icon className="w-12 h-12 text-white drop-shadow-md" />
-            <span className="font-display font-black text-2xl tracking-wider drop-shadow-md">
-              {textLabel}
-            </span>
+            <div className="w-12 h-12 rounded-2xl bg-black/20 border border-white/20 flex items-center justify-center shrink-0">
+              <Icon className="w-7 h-7 text-white drop-shadow-md" />
+            </div>
+            <div className="flex-1 min-w-0">
+              {!isTf && optionText && (
+                <span className="text-[10px] uppercase font-mono font-bold text-white/80 block">
+                  Opción {btn.label}
+                </span>
+              )}
+              <span className="font-display font-black text-lg sm:text-xl tracking-wide drop-shadow-md line-clamp-2">
+                {textLabel}
+              </span>
+            </div>
           </motion.button>
         )
       })}

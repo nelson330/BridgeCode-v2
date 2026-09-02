@@ -59,3 +59,17 @@ export const AiJobStatusResponseSchema = z.object({
   error: z.string().nullable().optional(),
 })
 export type AiJobStatusResponse = z.infer<typeof AiJobStatusResponseSchema>
+
+export const AiSummarizeRequestSchema = z.object({
+  lessonId: z.string().optional(),
+  fileUrl: z.string().optional(),
+  content: z.string().optional(),
+  lang: z.string().default('es'),
+})
+export type AiSummarizeRequest = z.infer<typeof AiSummarizeRequestSchema>
+
+export const AiSummarizeResponseSchema = z.object({
+  summary: z.string(),
+  title: z.string().optional(),
+})
+export type AiSummarizeResponse = z.infer<typeof AiSummarizeResponseSchema>

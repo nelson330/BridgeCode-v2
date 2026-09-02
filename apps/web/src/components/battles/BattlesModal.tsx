@@ -1,3 +1,4 @@
+import { isAnswerCorrect } from '@shared/contracts/exercises'
 import { motion } from 'framer-motion'
 import {
   Bot,
@@ -98,26 +99,11 @@ export function BattlesModal({ open, onOpenChange, studentName, lessons }: Battl
 
     setHasSubmitted(true)
     const ex = exercises[currentExIndex]
+    if (!ex) return
 
-    // Validate correctness locally for instant arcade response
-    let isCorrect = false
-    if (ex.type === 'mc' || ex.type === 'poll') {
-      try {
-        const ans = JSON.parse(ex.answerJson)
-        isCorrect = selectedOption === ans.correctIndex || selectedOption === ans.selectedIndex
-      } catch {
-        isCorrect = true
-      }
-    } else if (ex.type === 'tf') {
-      try {
-        const ans = JSON.parse(ex.answerJson)
-        isCorrect = (selectedOption === 0) === ans.isTrue
-      } catch {
-        isCorrect = true
-      }
-    } else {
-      isCorrect = true
-    }
+    // Validate correctness locally for instant arcade response using universal validator
+    const answerJsonStr = typeof selectedOption === 'string' ? selectedOption : JSON.stringify(selectedOption)
+    const isCorrect = isAnswerCorrect(ex.type, answerJsonStr, ex.answerJson)
 
     if (isCorrect) {
       sound.playCorrect()
@@ -269,6 +255,20 @@ export function BattlesModal({ open, onOpenChange, studentName, lessons }: Battl
             {/* Answer Controls */}
             <AnswerControls
               exerciseType={currentExercise.type}
+              options={
+                Array.isArray(currentExercise.optionsJson)
+                  ? currentExercise.optionsJson
+                  : currentExercise.optionsJson
+                    ? (() => {
+                        try {
+                          return JSON.parse(currentExercise.optionsJson)
+                        } catch {
+                          return []
+                        }
+                      })()
+                    : []
+              }
+              answerJson={currentExercise.answerJson}
               hasSubmitted={hasSubmitted}
               onSubmit={handleSubmitAnswer}
             />

@@ -333,10 +333,10 @@ REGLAS PEDAGÓGICAS ESTRICTAS DE REDACCIÓN:
      "prompt": "Afirmación directa y concreta.",
      "optionsJson": "[\"Verdadero\", \"Falso\"]",
      "answerJson": "{\"isTrue\": true}"
-   - "fill" (Rellenar espacio en blanco):
-     "prompt": "Enunciado donde la palabra o término clave a adivinar se reemplaza exactamente por [ ___ ].",
-     "optionsJson": null,
-     "answerJson": "{\"validAnswers\": [\"palabraClave\", \"sinonimoValido\"]}"
+    - "fill" (Rellenar espacio en blanco con banco de palabras para elegir):
+      "prompt": "Enunciado donde la palabra o término clave a adivinar se reemplaza exactamente por [ ___ ].",
+      "optionsJson": "[\"PalabraCorrecta\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"]",
+      "answerJson": "{\"validAnswers\": [\"PalabraCorrecta\"]}"
    - "order" (Ordenar pasos o secuencia):
      "prompt": "Instrucción directa para ordenar la secuencia cronológica o lógica.",
      "optionsJson": "[\"Paso 1\", \"Paso 2\", \"Paso 3\", \"Paso 4\"]",
@@ -451,5 +451,130 @@ Devuelve ÚNICAMENTE un JSON válido con la siguiente estructura exacta:
         })
         .where(eq(aiJobs.id, jobId))
     }
+  }
+
+  static async generateSummaryFromMaterial(
+    teacherId: string,
+    params: {
+      lessonId?: string
+      fileUrl?: string
+      content?: string
+      lang?: string
+    }
+  ): Promise<{ summary: string; title?: string }> {
+    const db = getDb()
+    let rawText = (params.content || '').trim()
+    let pdfUrl = params.fileUrl
+
+    if (params.lessonId) {
+      const foundLesson = await db
+        .select()
+        .from(lessons)
+        .where(and(eq(lessons.id, params.lessonId), eq(lessons.teacherId, teacherId)))
+        .limit(1)
+      if (foundLesson[0]) {
+        if (!rawText && foundLesson[0].materialContent) {
+          rawText = foundLesson[0].materialContent.trim()
+        }
+        if (!pdfUrl && foundLesson[0].materialFile) {
+          pdfUrl = foundLesson[0].materialFile
+        }
+      }
+    }
+
+    let pdfText = ''
+    if (pdfUrl) {
+      try {
+        const extracted = await extractPdfText(pdfUrl)
+        if (extracted.text) {
+          pdfText = extracted.text
+        }
+      } catch (err: any) {
+        logger.warn({ err }, 'Error extracting PDF text for summary')
+        if (!rawText) {
+          throw AppError.badRequest(
+            `No se pudo leer el archivo PDF: ${err?.message || 'archivo corrupto o sin texto'}`
+          )
+        }
+      }
+    }
+
+    const combined = [rawText, pdfText].filter(Boolean).join('\n\n')
+    if (!combined.trim()) {
+      throw AppError.badRequest('No se encontró contenido de texto ni en el PDF para generar el resumen.')
+    }
+
+    // Get configured AI provider
+    const providerConfig = await db
+      .select()
+      .from(aiProviderConfigs)
+      .where(and(eq(aiProviderConfigs.teacherId, teacherId), eq(aiProviderConfigs.enabled, true)))
+      .orderBy(desc(aiProviderConfigs.updatedAt))
+      .limit(1)
+
+    if (!providerConfig[0]?.apiKeyEncrypted) {
+      throw AppError.badRequest(
+        'No hay ningún proveedor de IA configurado con API Key. Configura uno en la pestaña de Ajustes de IA.'
+      )
+    }
+
+    const plainKey = decryptApiKey(providerConfig[0].apiKeyEncrypted)
+    const preset = AI_PROVIDER_PRESETS.find((p) => p.id === providerConfig[0]!.provider)
+    const baseUrl = (
+      providerConfig[0].baseUrl ||
+      preset?.defaultBaseUrl ||
+      'https://api.openai.com/v1'
+    ).replace(/\/$/, '')
+    const model = providerConfig[0].model || preset?.defaultModel || 'gpt-4o-mini'
+    const lang = params.lang || 'es'
+
+    const systemPrompt = `Eres un experto docente y pedagogo universitario.
+Tu tarea es leer el material educativo proporcionado (documento/PDF/apuntes de clase) y redactar un resumen educativo estructurado y claro en formato Markdown en idioma "${lang}".
+
+REGLAS DE FORMATO MARKDOWN ESTRICTAS:
+1. Usa encabezados (# Título de la Lección, ## Secciones Principales, ### Subtemas).
+2. Comienza con una introducción concisa sobre el tema.
+3. Resalta conceptos y palabras clave en **negrita**.
+4. Usa listas con viñetas (-) para puntos clave, pasos o características.
+5. Si hay términos técnicos, código o fórmulas, usa \`código en línea\`.
+6. Termina con una sección de "## Puntos Clave para Recordar".
+7. NO uses meta-referencias como "En este documento...", "El texto habla de...". Escribe directamente los apuntes y conceptos de estudio como material formativo para los estudiantes.`
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(35000),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${plainKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Genera un resumen educativo completo en Markdown a partir del siguiente material de la clase:\n\n"""\n${combined.slice(0, 40000)}\n"""`,
+          },
+        ],
+      }),
+    }).catch((err) => {
+      throw AppError.badRequest(`Error al conectar con el proveedor de IA: ${err.message || 'Timeout'}`)
+    })
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '')
+      throw AppError.badRequest(
+        `Error de la API de IA (${response.status}): ${errText || 'Respuesta no válida'}`
+      )
+    }
+
+    const completion = (await response.json()) as any
+    const content = completion?.choices?.[0]?.message?.content?.trim()
+
+    if (!content) {
+      throw AppError.badRequest('El modelo de IA no devolvió contenido para el resumen.')
+    }
+
+    return { summary: content }
   }
 }

@@ -38,6 +38,24 @@ agentRoutes.post('/lessons/:lessonId/ai-generate', async (c) => {
   return c.json(result, 201)
 })
 
+agentRoutes.post('/summarize', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json()
+  const result = await AgentsService.generateSummaryFromMaterial(user.id, body)
+  return c.json(result)
+})
+
+agentRoutes.post('/lessons/:lessonId/summarize', async (c) => {
+  const user = c.get('user')
+  const lessonId = c.req.param('lessonId')
+  const body = await c.req.json().catch(() => ({}))
+  const result = await AgentsService.generateSummaryFromMaterial(user.id, {
+    ...body,
+    lessonId,
+  })
+  return c.json(result)
+})
+
 agentRoutes.get('/jobs/:jobId', async (c) => {
   const jobId = c.req.param('jobId')
   const status = await AgentsService.getJobStatus(jobId)

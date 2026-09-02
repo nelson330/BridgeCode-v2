@@ -27,6 +27,7 @@ export class LessonsService {
       teacherId,
       title: req.title,
       materialContent: req.materialContent || null,
+      materialFile: req.materialFile || null,
       status,
       lang: req.lang || 'es',
       settingsJson: req.settingsJson || null,
@@ -46,6 +47,7 @@ export class LessonsService {
       classId,
       teacherId,
       title: req.title,
+      materialFile: req.materialFile || null,
       status,
       lang: req.lang || 'es',
     }
@@ -140,6 +142,7 @@ export class LessonsService {
     const updates: Record<string, any> = {
       ...(req.title ? { title: req.title } : {}),
       ...(req.materialContent !== undefined ? { materialContent: req.materialContent } : {}),
+      ...(req.materialFile !== undefined ? { materialFile: req.materialFile } : {}),
       ...(req.lang ? { lang: req.lang } : {}),
       ...(req.settingsJson !== undefined ? { settingsJson: req.settingsJson } : {}),
       updatedAt: new Date(),

@@ -14,6 +14,7 @@ import { sound } from '../../lib/audio-synth'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { MarkdownText } from '../ui/MarkdownText'
 
 interface ReadingViewerModalProps {
   open: boolean
@@ -133,7 +134,7 @@ export function ReadingViewerModal({
               <BookOpen className="w-5 h-5 text-indigo-400" />
               <span>Apuntes y Contenido Teórico</span>
             </h4>
-            <div className="whitespace-pre-line font-sans">{cleanText}</div>
+            <MarkdownText content={cleanText} className="text-slate-200 text-sm leading-relaxed" />
           </div>
         )}
 

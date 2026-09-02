@@ -9,12 +9,28 @@ interface MarkdownTextProps {
  * Parses inline markdown tokens: **bold**, *italic*, `code`, ~~strikethrough~~
  */
 function parseInlineMarkdown(text: string): React.ReactNode[] {
-  // Regex splitting by inline markdown tokens
-  const tokenRegex = /(\*\*.*?\*\*|__.*?__|`.*?`|\*.*?\*|_.*?_|~~.*?~~)/g
+  // Regex splitting by inline markdown tokens: links [text](url), bold, code, italic, strikethrough
+  const tokenRegex = /(\[[^\]]+\]\([^)]+\)|\*\*.*?\*\*|__.*?__|`.*?`|\*.*?\*|_.*?_|~~.*?~~)/g
   const parts = text.split(tokenRegex)
 
   return parts.map((part, idx) => {
     if (!part) return null
+
+    // Markdown Link: [text](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+    if (linkMatch?.[1] && linkMatch[2]) {
+      return (
+        <a
+          key={idx}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-400 hover:text-indigo-300 underline font-medium inline-flex items-center gap-0.5"
+        >
+          {linkMatch[1]}
+        </a>
+      )
+    }
 
     // Bold: **text** or __text__
     if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {

@@ -17,7 +17,7 @@ import {
   Type,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
 import { triggerConfetti } from '../../lib/confetti'
@@ -147,8 +147,9 @@ export function ExerciseBuilderModal({
   // TF option
   const [tfIsTrue, setTfIsTrue] = useState(true)
 
-  // Fill valid answers
+  // Fill valid answers and distractors
   const [fillAnswers, setFillAnswers] = useState('')
+  const [fillDistractors, setFillDistractors] = useState('')
 
   // Order items
   const [orderItems, setOrderItems] = useState(['Paso 1', 'Paso 2', 'Paso 3'])
@@ -178,33 +179,80 @@ export function ExerciseBuilderModal({
   const [slideContent, setSlideContent] = useState('')
   const [slideDuration, setSlideDuration] = useState(8)
 
-  // Sync state when editing an existing exercise
-  useState(() => {
+  // Sync state when opening or editing an exercise
+  useEffect(() => {
     if (exerciseToEdit) {
       setType(exerciseToEdit.type || 'mc')
       setPrompt(exerciseToEdit.prompt || '')
       setExplanation(exerciseToEdit.explanation || '')
       setPoints(exerciseToEdit.points || 2)
       setTimeSec(exerciseToEdit.timeSec || 30)
+      setPointsMultiplier(exerciseToEdit.pointsMultiplier || 1)
+
+      if (exerciseToEdit.answerJson) {
+        try {
+          const ans = JSON.parse(exerciseToEdit.answerJson)
+          if (ans.validAnswers && Array.isArray(ans.validAnswers)) {
+            setFillAnswers(ans.validAnswers.join(', '))
+          } else if (ans.validAnswer) {
+            setFillAnswers(String(ans.validAnswer))
+          }
+          if (ans.isTrue !== undefined) {
+            setTfIsTrue(Boolean(ans.isTrue))
+          }
+          if (ans.correctIndex !== undefined) {
+            setMcCorrectIndex(ans.correctIndex)
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       if (exerciseToEdit.optionsJson) {
         try {
           const opts = JSON.parse(exerciseToEdit.optionsJson)
           if (Array.isArray(opts)) {
             if (exerciseToEdit.type === 'mc' || exerciseToEdit.type === 'poll') {
-              setMcOptions(opts)
+              setMcOptions(opts.length >= 2 ? opts : ['', '', '', ''])
             } else if (exerciseToEdit.type === 'order') {
               setOrderItems(opts)
             } else if (exerciseToEdit.type === 'match') {
               setMatchPairs(opts)
+            } else if (exerciseToEdit.type === 'fill') {
+              // Extract distractors: options that are not in validAnswers
+              try {
+                const ans = JSON.parse(exerciseToEdit.answerJson || '{}')
+                const validList: string[] = Array.isArray(ans.validAnswers) ? ans.validAnswers : []
+                const distractors = opts.filter((o: string) => !validList.includes(o))
+                setFillDistractors(distractors.join(', '))
+              } catch {
+                setFillDistractors(opts.join(', '))
+              }
             }
           }
         } catch {
           // ignore
         }
       }
+    } else {
+      setType('mc')
+      setPrompt('')
+      setExplanation('')
+      setPoints(2)
+      setTimeSec(30)
+      setPointsMultiplier(1)
+      setMcOptions(['', '', '', ''])
+      setMcCorrectIndex(0)
+      setTfIsTrue(true)
+      setFillAnswers('')
+      setFillDistractors('')
+      setOrderItems(['Paso 1', 'Paso 2', 'Paso 3'])
+      setMatchPairs([
+        { left: 'Concepto A', right: 'Definición A' },
+        { left: 'Concepto B', right: 'Definición B' },
+      ])
     }
-  })
+  }, [exerciseToEdit, open])
 
   const handleAddMcOption = () => {
     if (mcOptions.length < 6) {
@@ -249,12 +297,17 @@ export function ExerciseBuilderModal({
           .split(',')
           .map((w) => w.trim())
           .filter(Boolean)
+        const distractors = fillDistractors
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean)
         if (validWords.length === 0) {
-          alert('Ingresa al menos una palabra o respuesta válida')
+          alert('Ingresa al menos una palabra o respuesta correcta')
           setIsSaving(false)
           return
         }
-        optionsJson = null
+        const allOpts = Array.from(new Set([...validWords, ...distractors]))
+        optionsJson = JSON.stringify(allOpts)
         answerJson = JSON.stringify({ validAnswers: validWords })
       } else if (type === 'order') {
         const validSteps = orderItems.filter((s) => s.trim() !== '')
@@ -513,8 +566,42 @@ export function ExerciseBuilderModal({
             </div>
           )}
 
-          {/* FILL & SHORT */}
-          {(type === 'fill' || type === 'short') && (
+          {/* FILL */}
+          {type === 'fill' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 block font-semibold">
+                  Palabra(s) Correcta(s) (la que completa el espacio [___]):
+                </label>
+                <Input
+                  placeholder="Ej: fotosíntesis, fotosintesis"
+                  value={fillAnswers}
+                  onChange={(e) => setFillAnswers(e.target.value)}
+                  required
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 block font-semibold">
+                  Opciones de Distracción / Otras palabras para elegir (separadas por comas):
+                </label>
+                <Input
+                  placeholder="Ej: respiración, digestión, combustión"
+                  value={fillDistractors}
+                  onChange={(e) => setFillDistractors(e.target.value)}
+                  className="text-xs"
+                />
+                <p className="text-[10px] text-slate-400">
+                  Los alumnos verán estas palabras y la correcta como botones barajados para seleccionar sin
+                  tener que escribir.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* SHORT */}
+          {type === 'short' && (
             <div className="space-y-1.5">
               <label className="text-xs text-slate-300 block">
                 Palabras o Frases Aceptadas (separadas por comas):

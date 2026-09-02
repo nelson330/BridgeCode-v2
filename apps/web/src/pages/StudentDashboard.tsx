@@ -162,20 +162,16 @@ export function StudentDashboard() {
     }
   }
 
-  const handleSubmitPracticeAnswer = async () => {
-    if (selectedOption === null || !currentHomework) return
+  const handleSubmitPracticeAnswer = async (submittedAnswerJson?: string) => {
+    if (!currentHomework) return
+    const answerJson = submittedAnswerJson || (typeof selectedOption === 'string' ? selectedOption : null)
+    if (!answerJson) return
 
     const currentEx = lessonExercises[currentExIndex]
+    if (!currentEx) return
     const latencyMs = Date.now() - startTime
 
     try {
-      let answerJson = '{}'
-      if (currentEx.type === 'mc' || currentEx.type === 'poll') {
-        answerJson = JSON.stringify({ correctIndex: selectedOption })
-      } else if (currentEx.type === 'tf') {
-        answerJson = JSON.stringify({ isTrue: selectedOption === 0 })
-      }
-
       const res = await apiFetch<{
         isCorrect: boolean
         pointsEarned: number
@@ -723,10 +719,11 @@ export function StudentDashboard() {
                       })()
                     : []
               }
+              answerJson={currentExercise.answerJson}
               hasSubmitted={feedback !== null}
               onSubmit={(val) => {
                 setSelectedOption(val)
-                handleSubmitPracticeAnswer()
+                handleSubmitPracticeAnswer(val)
               }}
               disabled={feedback !== null}
             />

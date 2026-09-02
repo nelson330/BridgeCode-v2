@@ -21,6 +21,7 @@ import {
   Pin,
   Plus,
   Printer,
+  QrCode as QrCodeIcon,
   Send,
   Share2,
   ShieldCheck,
@@ -51,6 +52,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Dialog } from '../components/ui/Dialog'
 import { Input } from '../components/ui/Input'
+import { QrCode as QrCodeCard } from '../components/ui/QrCode'
 import { CustomSelect } from '../components/ui/Select'
 import { Tabs } from '../components/ui/Tabs'
 import { useAuth } from '../context/AuthContext'
@@ -81,6 +83,7 @@ export function Dashboard() {
   const [newClassName, setNewClassName] = useState('')
   const [isEditClassOpen, setIsEditClassOpen] = useState(false)
   const [classToEdit, setClassToEdit] = useState<any>(null)
+  const [qrModalData, setQrModalData] = useState<{ title: string; code: string; url: string } | null>(null)
 
   // Modals state - Lessons CRUD & Multimedia
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false)
@@ -536,6 +539,23 @@ export function Dashboard() {
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setQrModalData({
+                        title: `Código de Acceso: ${cls.name}`,
+                        code: cls.code,
+                        url: `${window.location.origin}/join?code=${cls.code}`,
+                      })
+                    }
+                    className="gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                    title="Ver Código QR para unirse a la clase"
+                  >
+                    <QrCodeIcon className="w-3.5 h-3.5" />
+                    <span>QR</span>
+                  </Button>
+
                   <Button
                     variant="secondary"
                     size="sm"
@@ -1632,6 +1652,52 @@ export function Dashboard() {
             </Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* MODAL QR DE CLASE / ACCESO DIRECTO */}
+      <Dialog
+        open={Boolean(qrModalData)}
+        onOpenChange={(open) => {
+          if (!open) setQrModalData(null)
+        }}
+        title={qrModalData?.title || 'Código QR'}
+        description="Los alumnos pueden escanear este código con su móvil para acceder directamente."
+        className="max-w-sm"
+      >
+        {qrModalData && (
+          <div className="flex flex-col items-center justify-center space-y-4 pt-2 text-center">
+            <div className="p-3 bg-indigo-600/10 border border-indigo-500/30 rounded-2xl w-full">
+              <span className="text-[10px] text-indigo-300 font-bold block mb-0.5 uppercase tracking-wider">
+                CÓDIGO DE ACCESO:
+              </span>
+              <span className="font-display font-black text-3xl text-white tracking-widest">
+                {qrModalData.code}
+              </span>
+            </div>
+
+            <QrCodeCard value={qrModalData.url} size={180} />
+
+            <div className="space-y-1 w-full">
+              <span className="text-[11px] text-slate-400 block">Enlace directo:</span>
+              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-indigo-300 truncate select-all">
+                {qrModalData.url}
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                navigator.clipboard.writeText(qrModalData.url)
+                sound.playPowerup()
+              }}
+              className="w-full gap-2 shadow-lg shadow-indigo-500/20"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copiar Enlace de Acceso</span>
+            </Button>
+          </div>
+        )}
       </Dialog>
     </div>
   )

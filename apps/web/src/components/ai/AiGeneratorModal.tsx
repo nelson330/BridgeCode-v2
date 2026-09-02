@@ -10,6 +10,7 @@ import {
   Plus,
   Sliders,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
@@ -28,6 +29,15 @@ interface AiGeneratorModalProps {
   hasMaterialFile?: boolean
 }
 
+const INTERACTIVE_EXERCISE_TYPES = [
+  { id: 'mc', label: 'Opción Múltiple' },
+  { id: 'tf', label: 'Verdadero / Falso' },
+  { id: 'fill', label: 'Rellenar Hueco' },
+  { id: 'order', label: 'Ordenar Secuencia' },
+  { id: 'match', label: 'Emparejar Columnas' },
+  { id: 'slider', label: 'Slider Numérico' },
+]
+
 export function AiGeneratorModal({
   open,
   onOpenChange,
@@ -42,7 +52,7 @@ export function AiGeneratorModal({
     isConfigured: boolean
   } | null>(null)
 
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['mc', 'tf', 'fill', 'order'])
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(['mc', 'tf', 'fill', 'order', 'match'])
   const [count, setCount] = useState(4)
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
 
@@ -114,6 +124,7 @@ export function AiGeneratorModal({
             clearInterval(pollInterval)
             setIsGenerating(false)
             setErrorMessage(statusRes.error || 'Error en la generación de IA')
+            sound.playIncorrect()
           }
         } catch {
           clearInterval(pollInterval)
@@ -123,7 +134,13 @@ export function AiGeneratorModal({
     } catch (err: any) {
       setIsGenerating(false)
       setErrorMessage(err.message || 'Error al iniciar trabajo de IA')
+      sound.playIncorrect()
     }
+  }
+
+  const handleDiscardExercise = (index: number) => {
+    sound.playWheelTick()
+    setGeneratedResults((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleAddAllToLesson = async () => {
@@ -221,19 +238,10 @@ export function AiGeneratorModal({
           {/* Exercise Types Selection */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-              Tipos de Ejercicios a Generar
+              Tipos de Ejercicios Interactivos
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { id: 'mc', label: 'Opción Múltiple' },
-                { id: 'tf', label: 'Verdadero / Falso' },
-                { id: 'fill', label: 'Rellenar Hueco' },
-                { id: 'type_answer', label: 'Respuesta Exacta' },
-                { id: 'slider', label: 'Slider Numérico' },
-                { id: 'order', label: 'Ordenar Secuencia' },
-                { id: 'match', label: 'Emparejar' },
-                { id: 'word_cloud', label: 'Nube de Palabras' },
-              ].map((t) => {
+              {INTERACTIVE_EXERCISE_TYPES.map((t) => {
                 const active = selectedTypes.includes(t.id)
                 return (
                   <button
@@ -324,18 +332,31 @@ export function AiGeneratorModal({
           </div>
         )}
 
-        {/* Error Message */}
+        {/* Error Message with Immediate Retry */}
         {errorMessage && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-bold">No se pudieron generar los ejercicios</p>
-              <p className="text-rose-300/90 whitespace-pre-line">{errorMessage}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div className="space-y-0.5">
+                <p className="font-bold text-rose-200">No se pudieron generar los ejercicios</p>
+                <p className="text-rose-300/90 whitespace-pre-line">{errorMessage}</p>
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleStartGeneration}
+              disabled={isGenerating}
+              className="shrink-0 gap-1.5 text-xs text-rose-200 border-rose-700/60 hover:bg-rose-900/40"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Reintentar</span>
+            </Button>
           </div>
         )}
 
-        {/* Generation Results Preview */}
+        {/* Generation Results Preview with individual discard & add */}
         {generatedResults.length > 0 && (
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
@@ -344,18 +365,18 @@ export function AiGeneratorModal({
                 {generatedResults.length} Ejercicios Generados con Éxito
               </span>
               <span className="text-[11px] text-slate-400">
-                Añádelos todos o individualmente a tu lección
+                Descarta los que no te gusten o añádelos a tu lección
               </span>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {generatedResults.map((ex, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-start justify-between gap-3"
+                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-start justify-between gap-3 group hover:border-slate-700 transition-colors"
                 >
                   <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="primary" className="text-[10px]">
                         {ex.type === 'mc'
                           ? 'OPCIÓN MÚLTIPLE'
@@ -365,7 +386,9 @@ export function AiGeneratorModal({
                               ? 'RELLENAR'
                               : ex.type === 'order'
                                 ? 'ORDENAR'
-                                : 'EMPAREJAR'}
+                                : ex.type === 'slider'
+                                  ? 'SLIDER'
+                                  : 'EMPAREJAR'}
                       </Badge>
                       <span className="font-bold text-white truncate">{ex.prompt}</span>
                     </div>
@@ -376,17 +399,27 @@ export function AiGeneratorModal({
                     )}
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleAddSingleToLesson(ex, idx)}
-                    className="shrink-0 text-[11px] gap-1 text-emerald-400 hover:text-emerald-300"
-                    title="Añadir únicamente este ejercicio a la lección"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Añadir</span>
-                  </Button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleDiscardExercise(idx)}
+                      className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      title="Descartar este ejercicio de la lista"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleAddSingleToLesson(ex, idx)}
+                      className="shrink-0 text-[11px] gap-1 text-emerald-400 hover:text-emerald-300"
+                      title="Añadir únicamente este ejercicio a la lección"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Añadir</span>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

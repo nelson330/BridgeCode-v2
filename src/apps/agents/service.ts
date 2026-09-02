@@ -313,7 +313,7 @@ export class AgentsService {
         ).replace(/\/$/, '')
         const model = providerConfig[0].model || preset?.defaultModel || 'gpt-4o-mini'
 
-        const systemPrompt = `Eres un experto docente y diseñador instruccional en creación de ejercicios interactivos gamificados.
+        const systemPrompt = `Eres un experto docente y diseñador instruccional en creación de ejercicios interactivos gamificados de alto nivel.
 ${materialText ? `A partir del siguiente material educativo:\n"""\n${materialText}\n"""\n\n` : ''}Genera exactamente ${job.count} ejercicios en idioma "${lang}"${
           materialText
             ? ' basados estrictamente en el contenido del material mostrado arriba.'
@@ -321,49 +321,46 @@ ${materialText ? `A partir del siguiente material educativo:\n"""\n${materialTex
         }
 Tipos de ejercicios permitidos a generar: ${types.join(', ')}.
 
-REGLAS PEDAGÓGICAS ESTRICTAS DE REDACCIÓN:
-1. PREGUNTAS DIRECTAS SOBRE EL CONOCIMIENTO: Formula las preguntas directamente sobre el hecho, concepto, ciencia o procedimiento real.
-   - CORRECTO: "¿Cuál es el cuarto planeta del sistema solar?" o "Ordena los planetas según su distancia al Sol" o "¿Qué fuerza atrae los objetos hacia la Tierra?".
-   - PROHIBIDO: NUNCA uses meta-referencias como "según el texto", "de acuerdo al PDF", "el documento indica", "en la lección se menciona". El estudiante debe ser evaluado sobre el conocimiento real en sí.
-2. FORMATOS POR TIPO DE EJERCICIO:
-   - "mc" (Opción múltiple):
+CRITERIOS ESTRICTOS DE COHERENCIA PEDAGÓGICA Y ASIGNACIÓN DE TIPOS:
+1. SELECCIÓN CONTEXTUAL DEL TIPO DE EJERCICIO:
+   - "order" (Ordenar Secuencia): ÚSALO ÚNICAMENTE cuando los datos del material presenten una secuencia cronológica, histórica, lógica, algorítmica, procesal o de fases (ej. pasos del método científico, etapas de la mitosis, eventos históricos en orden temporal, orden de planetas por distancia al Sol). PROHIBIDO usar "order" para listas de conceptos no ordenados o definiciones inconexas.
+   - "match" (Emparejar Columnas): ÚSALO ÚNICAMENTE cuando existan relaciones biunívocas claras de correspondencia (ej. Concepto ↔ Definición, Término ↔ Propiedad, Órgano ↔ Función, Causa ↔ Efecto, País ↔ Capital). Cada par debe tener una correspondencia unívoca sin ambigüedad.
+   - "slider" (Estimación Numérica): ÚSALO ÚNICAMENTE para preguntas cuya respuesta sea una cantidad medible, fecha/año, porcentaje, temperatura o magnitud física con un rango (min, max) coherente y tolerancia razonable.
+   - "fill" (Rellenar Hueco con Banco de Palabras): La palabra clave a adivinar se reemplaza exactamente por [ ___ ]. Es OBLIGATORIO incluir en "optionsJson" la palabra correcta más 3 distractores altamente plausibles del EXACTO MISMO campo semántico y categoría gramatical (ej. si la respuesta es "Mitocondria", distractores: ["Ribosoma", "Lisosoma", "Aparato de Golgi"]).
+   - "mc" (Opción Múltiple): Formular preguntas directas con 4 opciones plausibles del mismo contexto.
+   - "tf" (Verdadero o Falso): Afirmación conceptual rotunda y precisa sobre hechos comprobables.
+
+2. CERO PREGUNTAS DE TEXTO LIBRE: Todos los ejercicios deben ser 100% interactivos mediante opciones seleccionables, emparejamiento, ordenamiento o sliders numéricos. No formules preguntas que requieran escribir párrafos o texto libre.
+
+3. PREGUNTAS DIRECTAS SOBRE EL CONOCIMIENTO: Formula las preguntas directamente sobre el hecho o concepto real.
+   - CORRECTO: "¿Cuál es la capital de Francia?" o "Ordena las fases del ciclo celular:"
+   - PROHIBIDO: NUNCA uses meta-referencias como "según el texto", "de acuerdo al PDF", "el documento indica".
+
+4. ESTRUCTURA Y FORMATOS EXACTOS:
+   - "mc":
      "optionsJson": "[\"Opción correcta\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"]",
      "answerJson": "{\"correctIndex\": 0}"
-   - "tf" (Verdadero o Falso):
-     "prompt": "Afirmación directa y concreta.",
+   - "tf":
      "optionsJson": "[\"Verdadero\", \"Falso\"]",
      "answerJson": "{\"isTrue\": true}"
-    - "fill" (Rellenar espacio en blanco con banco de palabras para elegir):
-      "prompt": "Enunciado donde la palabra o término clave a adivinar se reemplaza exactamente por [ ___ ].",
-      "optionsJson": "[\"PalabraCorrecta\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"]",
-      "answerJson": "{\"validAnswers\": [\"PalabraCorrecta\"]}"
-   - "order" (Ordenar pasos o secuencia):
-     "prompt": "Instrucción directa para ordenar la secuencia cronológica o lógica.",
+   - "fill":
+     "prompt": "Enunciado donde el término clave se reemplaza exactamente por [ ___ ].",
+     "optionsJson": "[\"PalabraCorrecta\", \"Distractor 1\", \"Distractor 2\", \"Distractor 3\"]",
+     "answerJson": "{\"validAnswers\": [\"PalabraCorrecta\"]}"
+   - "order":
+     "prompt": "Ordena los siguientes pasos de la secuencia:",
      "optionsJson": "[\"Paso 1\", \"Paso 2\", \"Paso 3\", \"Paso 4\"]",
      "answerJson": "{\"correctOrder\": [0, 1, 2, 3]}"
-   - "match" (Emparejar conceptos):
-     "prompt": "Empareja cada concepto con su correspondiente definición o propiedad.",
-     "optionsJson": "[{\"left\": \"Concepto 1\", \"right\": \"Definición 1\"}, {\"left\": \"Concepto 2\", \"right\": \"Definición 2\"}]",
-     "answerJson": "{\"pairs\": [{\"left\": \"Concepto 1\", \"right\": \"Definición 1\"}, {\"left\": \"Concepto 2\", \"right\": \"Definición 2\"}]}"
-   - "open" o "short" (Pregunta abierta / respuesta corta):
-     "prompt": "Pregunta conceptual directa.",
+   - "match":
+     "prompt": "Empareja cada concepto con su definición:",
+     "optionsJson": "[{\"left\": \"Concepto 1\", \"right\": \"Definición 1\"}, {\"left\": \"Concepto 2\", \"right\": \"Definición 2\"}, {\"left\": \"Concepto 3\", \"right\": \"Definición 3\"}]",
+     "answerJson": "{\"pairs\": [{\"left\": \"Concepto 1\", \"right\": \"Definición 1\"}, {\"left\": \"Concepto 2\", \"right\": \"Definición 2\"}, {\"left\": \"Concepto 3\", \"right\": \"Definición 3\"}]}"
+   - "slider":
+     "prompt": "¿En qué año se produjo...?",
      "optionsJson": null,
-     "answerJson": "{\"sampleAnswer\": \"Explicación modelo\", \"keywords\": [\"palabra1\", \"palabra2\"]}"
-   - "type_answer" (Respuesta exacta escrita):
-     "prompt": "Pregunta que requiere escribir el término o cifra exacta.",
-     "optionsJson": null,
-     "answerJson": "{\"validAnswers\": [\"respuestaCorrecta\", \"sinonimo\"], \"caseSensitive\": false}"
-   - "slider" (Valor numérico con rango):
-     "prompt": "Pregunta que requiere estimar un valor numérico (fecha, porcentaje, medida).",
-     "optionsJson": null,
-     "answerJson": "{\"min\": 0, \"max\": 100, \"correctValue\": 42, \"tolerance\": 5}"
-   - "word_cloud" (Nube de palabras, sin puntuación):
-     "prompt": "Pregunta abierta para recopilar conceptos clave.",
-     "optionsJson": null,
-     "answerJson": "{\"sampleWords\": [\"concepto1\", \"concepto2\"]}"
+     "answerJson": "{\"min\": 1900, \"max\": 2000, \"correctValue\": 1969, \"tolerance\": 2}"
 
-3. UTILIZA MARKDOWN enriquecido en enunciados (**negrita** para términos clave, \`código\` para fórmulas o variables).
-4. EXPLICACIÓN PEDAGÓGICA: Proporciona una explicación clara del concepto que enseñe y refuerce el aprendizaje.
+5. EXPLICACIÓN PEDAGÓGICA: Proporciona una explicación clara en "explanation" con formato Markdown enriquecido (**negrita**, \`código\`).
 
 Devuelve ÚNICAMENTE un JSON válido con la siguiente estructura exacta:
 {

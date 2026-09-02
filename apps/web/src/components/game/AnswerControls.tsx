@@ -8,7 +8,6 @@ import {
   ListOrdered,
   Loader2,
   MapPin,
-  PenTool,
   Send,
   Shuffle,
   SlidersHorizontal,
@@ -21,7 +20,6 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { sound } from '../../lib/audio-synth'
 import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
 
 interface AnswerControlsProps {
   exerciseType: string
@@ -75,7 +73,6 @@ export function AnswerControls({
   answerJson,
 }: AnswerControlsProps) {
   // ─── All hooks must be at the top ────────────────────────────────────────────
-  const [typedText, setTypedText] = useState('')
   const [orderItems, setOrderItems] = useState<Array<{ id: number; text: string }>>([])
 
   // Slider state
@@ -91,13 +88,12 @@ export function AnswerControls({
   const [matchLeftIndex, setMatchLeftIndex] = useState<number | null>(null)
   const [matchMatches, setMatchMatches] = useState<Record<number, number>>({}) // leftIdx -> rightIdx
 
-  // Word-tile state (fill / type_answer)
+  // Word-tile / Concept-tile state
   const [wordTiles, setWordTiles] = useState<string[]>([])
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
 
   // ─── Effect: load type-specific state ─────────────────────────────────────────
   useEffect(() => {
-    setTypedText('')
     setPinPos(null)
     setMatchLeftIndex(null)
     setMatchMatches({})
@@ -186,12 +182,26 @@ export function AnswerControls({
       setMatchRightItems([])
     }
 
-    // 4. FILL / TYPE_ANSWER: word bank selection
-    if (exerciseType === 'fill' || exerciseType === 'type_answer') {
+    // 4. FILL / TYPE_ANSWER / SHORT / OPEN / WORD_CLOUD: 100% interactive selectable word bank
+    if (
+      exerciseType === 'fill' ||
+      exerciseType === 'type_answer' ||
+      exerciseType === 'short' ||
+      exerciseType === 'open' ||
+      exerciseType === 'word_cloud'
+    ) {
       const valid: string[] = Array.isArray(parsed?.validAnswers)
         ? parsed.validAnswers.map((s: any) => String(s))
         : parsed?.validAnswer
           ? [String(parsed.validAnswer)]
+          : parsed?.sampleAnswer
+            ? [String(parsed.sampleAnswer)]
+            : []
+
+      const keywords: string[] = Array.isArray(parsed?.keywords)
+        ? parsed.keywords.map((k: any) => String(k))
+        : Array.isArray(parsed?.sampleWords)
+          ? parsed.sampleWords.map((k: any) => String(k))
           : []
 
       const distractorPool: string[] = Array.isArray(options)
@@ -200,7 +210,14 @@ export function AnswerControls({
             .filter(Boolean)
         : []
 
-      const merged = Array.from(new Set([...valid, ...distractorPool])).filter((w) => w.trim().length > 0)
+      let merged = Array.from(new Set([...valid, ...keywords, ...distractorPool])).filter(
+        (w) => w.trim().length > 0
+      )
+
+      // If no options exist, provide contextual default choices
+      if (merged.length === 0) {
+        merged = ['Opción A', 'Opción B', 'Opción C', 'Opción D']
+      }
 
       // Shuffle tiles (Fisher-Yates)
       const tiles = [...merged]
@@ -239,13 +256,6 @@ export function AnswerControls({
     setSelectedWord(word)
     sound.playPowerup()
     onSubmit(JSON.stringify({ text: word.trim() }))
-  }
-
-  const handleSubmitTyped = (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    if (hasSubmitted || disabled || !typedText.trim()) return
-    sound.playPowerup()
-    onSubmit(JSON.stringify({ text: typedText.trim() }))
   }
 
   const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
@@ -290,12 +300,6 @@ export function AnswerControls({
     if (hasSubmitted || disabled || !pinPos) return
     sound.playPowerup()
     onSubmit(JSON.stringify({ x: pinPos.x, y: pinPos.y }))
-  }
-
-  const handleSubmitWordCloud = () => {
-    if (hasSubmitted || disabled || !typedText.trim()) return
-    sound.playPowerup()
-    onSubmit(JSON.stringify({ text: typedText.trim() }))
   }
 
   const handlePickMatchLeft = (leftIdx: number) => {
@@ -393,65 +397,59 @@ export function AnswerControls({
     )
   }
 
-  // ─── Word-tile picker (fill / type_answer): choose from word options ─────────
-  if (exerciseType === 'fill' || exerciseType === 'type_answer') {
+  // ─── 100% Interactive Word-Tile Picker (fill / type_answer / short / open / word_cloud) ──
+  if (
+    exerciseType === 'fill' ||
+    exerciseType === 'type_answer' ||
+    exerciseType === 'short' ||
+    exerciseType === 'open' ||
+    exerciseType === 'word_cloud'
+  ) {
+    const isWordCloud = exerciseType === 'word_cloud'
+    const isShortOrOpen = exerciseType === 'short' || exerciseType === 'open'
+
     return (
       <div className="space-y-4 w-full">
         <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
           <div className="text-center space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
-              {exerciseType === 'type_answer'
-                ? 'Elige la respuesta exacta:'
-                : 'Elige la palabra correcta para completar el espacio:'}
+              {isWordCloud
+                ? 'Selecciona una idea o palabra clave:'
+                : isShortOrOpen
+                  ? 'Selecciona la respuesta o concepto correcto:'
+                  : exerciseType === 'type_answer'
+                    ? 'Elige la respuesta exacta:'
+                    : 'Elige la palabra correcta para completar el espacio:'}
             </span>
-            <p className="text-[11px] text-slate-400">Toca la palabra que completa el enunciado [___]</p>
+            <p className="text-[11px] text-slate-400">
+              {isWordCloud
+                ? 'Toca la palabra que mejor responde a la pregunta'
+                : 'Toca una opción para responder'}
+            </p>
           </div>
 
-          {wordTiles.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
-              {wordTiles.map((word, idx) => {
-                const isChosen = selectedWord === word
-                return (
-                  <motion.button
-                    key={word}
-                    type="button"
-                    onClick={() => handlePickWordTile(word)}
-                    disabled={disabled}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.94 }}
-                    className={`p-3.5 sm:p-4 rounded-2xl border-2 font-display font-bold text-sm sm:text-base shadow-lg transition-all cursor-pointer select-none flex items-center justify-center gap-2 text-center ${
-                      isChosen
-                        ? 'bg-indigo-600 border-indigo-300 ring-4 ring-indigo-500/40 text-white'
-                        : TILE_COLORS[idx % TILE_COLORS.length]
-                    }`}
-                  >
-                    <span>{word}</span>
-                  </motion.button>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <Input
-                type="text"
-                placeholder="Escribe tu respuesta aquí..."
-                value={typedText}
-                onChange={(e) => setTypedText(e.target.value)}
-                disabled={disabled}
-                className="text-center font-display font-bold text-xl py-3 text-white"
-                autoFocus
-              />
-              <Button
-                type="button"
-                onClick={handleSubmitTyped}
-                disabled={disabled || !typedText.trim()}
-                className="w-full gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Enviar
-              </Button>
-            </div>
-          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+            {wordTiles.map((word, idx) => {
+              const isChosen = selectedWord === word
+              return (
+                <motion.button
+                  key={word}
+                  type="button"
+                  onClick={() => handlePickWordTile(word)}
+                  disabled={disabled}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.94 }}
+                  className={`p-3.5 sm:p-4 rounded-2xl border-2 font-display font-bold text-sm sm:text-base shadow-lg transition-all cursor-pointer select-none flex items-center justify-center gap-2 text-center ${
+                    isChosen
+                      ? 'bg-indigo-600 border-indigo-300 ring-4 ring-indigo-500/40 text-white'
+                      : TILE_COLORS[idx % TILE_COLORS.length]
+                  }`}
+                >
+                  <span>{word}</span>
+                </motion.button>
+              )
+            })}
+          </div>
         </div>
       </div>
     )
@@ -536,39 +534,6 @@ export function AnswerControls({
           <span>Confirmar Ubicación</span>
         </Button>
       </div>
-    )
-  }
-
-  // ─── Word Cloud ─────────────────────────────────────────────────────────────
-  if (exerciseType === 'word_cloud') {
-    return (
-      <form onSubmit={handleSubmitWordCloud} className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
-            Escribe una palabra o concepto clave:
-          </label>
-          <Input
-            type="text"
-            placeholder="Tu palabra..."
-            value={typedText}
-            onChange={(e) => setTypedText(e.target.value.slice(0, 50))}
-            disabled={disabled}
-            className="text-center font-display font-bold text-xl py-3 text-white"
-            autoFocus
-          />
-          <p className="text-[10px] text-slate-500 text-center">Máximo 50 caracteres</p>
-        </div>
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          disabled={disabled || !typedText.trim()}
-          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
-        >
-          <Send className="w-5 h-5" />
-          <span>Enviar Palabra</span>
-        </Button>
-      </form>
     )
   }
 
@@ -791,37 +756,6 @@ export function AnswerControls({
           </span>
         </Button>
       </div>
-    )
-  }
-
-  // ─── Open / Short ───────────────────────────────────────────────────────────
-  if (exerciseType === 'open' || exerciseType === 'short') {
-    return (
-      <form onSubmit={handleSubmitTyped} className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-2 shadow-xl">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
-            Escribe tu respuesta:
-          </label>
-          <textarea
-            rows={3}
-            placeholder="Explica con tus palabras..."
-            value={typedText}
-            onChange={(e) => setTypedText(e.target.value)}
-            disabled={disabled}
-            className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-          />
-        </div>
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          disabled={disabled || !typedText.trim()}
-          className="w-full gap-2 text-base font-bold py-4 shadow-xl"
-        >
-          <PenTool className="w-5 h-5" />
-          <span>Enviar Respuesta Escrita</span>
-        </Button>
-      </form>
     )
   }
 

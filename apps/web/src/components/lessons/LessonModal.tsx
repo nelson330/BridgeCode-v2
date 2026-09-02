@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   BookOpen,
   Eye,
   FileText,
@@ -28,24 +29,22 @@ interface LessonModalProps {
   lessonToEdit?: {
     id: string
     title: string
-    materialContent?: string
+    materialContent?: string | null
     materialFile?: string | null
-    lang?: string
   } | null
-  onLessonSaved: () => void
+  onLessonSaved?: () => void
 }
 
 export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLessonSaved }: LessonModalProps) {
   const [title, setTitle] = useState('')
   const [materialContent, setMaterialContent] = useState('')
   const [materialFile, setMaterialFile] = useState<string | null>(null)
-  const [activeEditorTab, setActiveEditorTab] = useState<'write' | 'preview' | 'split'>('write')
   const [uploading, setUploading] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  // Attachments: list of uploaded media files and links
-  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; type: 'pdf' | 'image' }>>(
+  const [activeEditorTab, setActiveEditorTab] = useState<'write' | 'preview' | 'split'>('write')
+  const [attachments, setAttachments] = useState<Array<{ name: string; url: string; type: 'pdf' | 'image' }>>(
     []
   )
   const [_links, setLinks] = useState<Array<{ title: string; url: string }>>([])
@@ -116,10 +115,11 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
 
   const handleGenerateSummary = async () => {
     if (!materialFile && !materialContent.trim()) {
-      alert('Sube un archivo PDF o escribe contenido preliminar para que el modelo pueda resumir.')
+      setSummaryError('Sube un archivo PDF o escribe contenido preliminar para que el modelo pueda resumir.')
       return
     }
 
+    setSummaryError(null)
     setSummarizing(true)
     try {
       const res = await apiFetch<{ summary: string; title?: string }>('/api/ai/summarize', {
@@ -141,7 +141,10 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
       }
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al generar el resumen con IA. Verifica tu configuración de IA.')
+      setSummaryError(
+        err.message ||
+          'No se pudo generar el resumen. Verifica tu configuración de IA o que el PDF tenga texto.'
+      )
     } finally {
       setSummarizing(false)
     }
@@ -192,7 +195,7 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
           }),
         })
       }
-      onLessonSaved()
+      onLessonSaved?.()
       onOpenChange(false)
     } catch (err: any) {
       alert(err.message || 'Error al guardar la lección')
@@ -308,6 +311,27 @@ export function LessonModal({ open, onOpenChange, classId, lessonToEdit, onLesso
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Error banner for AI Summary with direct retry */}
+            {summaryError && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+                <div className="flex items-start gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span className="leading-tight">{summaryError}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  disabled={summarizing}
+                  className="shrink-0 gap-1 text-[11px] text-rose-200 border-rose-700/60 hover:bg-rose-900/40"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Reintentar</span>
+                </Button>
               </div>
             )}
           </div>

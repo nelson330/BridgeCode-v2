@@ -24,6 +24,7 @@ import { RouletteWheel } from '../components/game/RouletteWheel'
 import { ScoreboardOverlay } from '../components/game/ScoreboardOverlay'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
+import { QrCode } from '../components/ui/QrCode'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { sound } from '../lib/audio-synth'
@@ -364,11 +365,18 @@ export function HostRoom() {
                       {session?.codePin || '123456'}
                     </span>
 
-                    {/* QR Code */}
+                    {/* Real Scannable QR Code */}
                     {session?.codePin && (
-                      <div className="flex flex-col items-center gap-2 pt-2">
-                        <QRCodeSVG value={`${window.location.origin}/join?pin=${session.codePin}`} />
-                        <span className="text-xs text-slate-500">Escanea para unirte</span>
+                      <div className="flex flex-col items-center gap-3 pt-3">
+                        <QrCode value={`${window.location.origin}/join?pin=${session.codePin}`} size={160} />
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-xs font-bold text-indigo-300 block">
+                            Escanea con la cámara de tu móvil para unirte
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono select-all">
+                            {window.location.origin}/join?pin={session.codePin}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -643,66 +651,4 @@ export function HostRoom() {
       </main>
     </div>
   )
-}
-
-// Simple QR Code SVG component (no external deps)
-function QRCodeSVG({ value }: { value: string }) {
-  // Generate a simple QR-like visual using the URL hash
-  const size = 128
-  const modules = 21 // QR version 1 is 21x21
-  const cellSize = size / modules
-
-  // Simple hash-based pattern (not a real QR encoder, but visually representative)
-  const hash = simpleHash(value)
-  const grid: boolean[][] = []
-  for (let y = 0; y < modules; y++) {
-    const row: boolean[] = []
-    for (let x = 0; x < modules; x++) {
-      // Finder patterns (corners)
-      const isFinder = (x < 7 && y < 7) || (x >= modules - 7 && y < 7) || (x < 7 && y >= modules - 7)
-      if (isFinder) {
-        const lx = x < 7 ? x : x - (modules - 7)
-        const ly = y < 7 ? y : y - (modules - 7)
-        row.push(lx === 0 || lx === 6 || ly === 0 || ly === 6 || (lx >= 2 && lx <= 4 && ly >= 2 && ly <= 4))
-      } else {
-        // Data area: use hash for pseudo-random pattern
-        row.push(((hash[(y * modules + x) % hash.length] ?? 0) & 1) === 1)
-      }
-    }
-    grid.push(row)
-  }
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg">
-      <rect width={size} height={size} fill="white" />
-      {grid.map((row, y) =>
-        row.map((cell, x) =>
-          cell ? (
-            <rect
-              key={`${x}-${y}`}
-              x={x * cellSize}
-              y={y * cellSize}
-              width={cellSize}
-              height={cellSize}
-              fill="#1e293b"
-            />
-          ) : null
-        )
-      )}
-    </svg>
-  )
-}
-
-function simpleHash(str: string): number[] {
-  const result: number[] = []
-  for (let i = 0; i < str.length; i++) {
-    result.push(str.charCodeAt(i))
-  }
-  // Expand
-  while (result.length < 441) {
-    const prev = result[result.length - 1] ?? 0
-    const back = result[Math.max(0, result.length - 5)] ?? 0
-    result.push((prev * 31 + back) & 0xff)
-  }
-  return result
 }

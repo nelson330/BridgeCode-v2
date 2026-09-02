@@ -322,10 +322,19 @@ export function ExerciseBuilderModal({
           .split(',')
           .map((w) => w.trim())
           .filter(Boolean)
-        optionsJson = null
+        const distractors = fillDistractors
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean)
+        const allOpts = Array.from(new Set([...validKeywords, ...distractors]))
+        optionsJson = allOpts.length > 0 ? JSON.stringify(allOpts) : null
         answerJson = JSON.stringify({ validAnswers: validKeywords })
       } else if (type === 'type_answer') {
         const validAnswers = fillAnswers
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean)
+        const distractors = fillDistractors
           .split(',')
           .map((w) => w.trim())
           .filter(Boolean)
@@ -334,7 +343,8 @@ export function ExerciseBuilderModal({
           setIsSaving(false)
           return
         }
-        optionsJson = null
+        const allOpts = Array.from(new Set([...validAnswers, ...distractors]))
+        optionsJson = allOpts.length > 0 ? JSON.stringify(allOpts) : null
         answerJson = JSON.stringify({ validAnswers, caseSensitive: false })
       } else if (type === 'slider') {
         optionsJson = null

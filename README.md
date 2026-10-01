@@ -36,6 +36,8 @@ El PDF original de la raíz está excluido mediante `.gitignore` y `.dockerignor
 
 El arranque inicializa las tablas y ejecuta el seeder tanto en desarrollo como en producción. La inicialización es transaccional y guarda la marca `seed.history_identity.v1` en `app_settings` únicamente al completar todas las inserciones. Si falla, revierte los datos para permitir el siguiente intento.
 
+Las contraseñas iniciales se calculan secuencialmente: Argon2 conserva sus 64 MiB por hash, tres iteraciones y un hilo, evitando acumular la memoria de las diez cuentas durante el primer arranque en instancias de 512 MiB.
+
 En bases existentes agrega la demo una sola vez, conserva las cuentas iniciales, sus contraseñas y el contenido anterior. Los siguientes arranques no reponen ejercicios eliminados ni sobrescriben modificaciones. `bun run db:seed` utiliza la misma protección.
 
 Las antiguas variables de modo ya no intervienen. Las API `/api/config` y `/api/health` no devuelven un campo `mode`; los modos de juego (trivia, carrera, equipos, batalla, ruleta y torneo) siguen disponibles. SQLite permanece como almacenamiento. Las columnas históricas relacionadas con el antiguo funcionamiento se conservan para mantener la compatibilidad de las bases existentes.
@@ -57,6 +59,7 @@ Font Awesome gratuito y las fuentes están empaquetados con la aplicación. Se i
 | `bun run typecheck` | Verificación TypeScript |
 | `bun run lint` | Reglas y formato con Biome |
 | `bun run test:production` | Verificar el bundle de producción sin PDF y sus credenciales iniciales |
+| `bun run test:docker-memory` | Verificar primer arranque y reinicio en Docker con 512 MiB y sin swap |
 | `bun run test:e2e` | Flujos de navegador y pruebas responsive |
 
 Para las pruebas de navegador:
@@ -79,6 +82,15 @@ NODE_ENV=production bun run start
 El backend sirve la SPA y la API desde el mismo origen, incluidas las rutas `/present/:classId/:lessonId`, `/host/:sessionId` y `/play/:pin`. Configura `BASE_URL` con tu URL pública y `COOKIE_SECURE=true` cuando uses HTTPS. El proyecto incluye Dockerfile y un Blueprint para Render con disco persistente de 1 GB.
 
 Conserva `DATA_DIR` en almacenamiento persistente para mantener SQLite, las claves y los archivos subidos entre despliegues. Las credenciales iniciales se muestran en los logs del primer arranque.
+
+Para comprobar el consumo de memoria del despliegue (Docker con cgroup v2):
+
+```bash
+docker build -t aulaplay-online:memory-test .
+bun run test:docker-memory
+```
+
+La prueba usa un contenedor aislado con límite de 512 MiB, verifica la demo y el inicio de sesión, mide el pico de memoria y comprueba el reinicio sin duplicados. Elimina su contenedor y volumen temporal al terminar.
 
 ## Licencia
 

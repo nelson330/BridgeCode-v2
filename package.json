@@ -23,7 +23,8 @@
     "lint": "bun --bun x biome check .",
     "format": "bun --bun x biome format --write .",
     "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
-    "test:production": "bun tests/smoke/production.ts"
+    "test:production": "bun tests/smoke/production.ts",
+    "test:docker-memory": "bun tests/smoke/docker-memory.ts"
   },
   "dependencies": {
     "@fontsource-variable/outfit": "^5.3.0",

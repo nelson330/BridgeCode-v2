@@ -52,24 +52,26 @@ export async function runDatabaseSeed() {
     })),
   ]
   const credentials: { username: string; password: string; role: string }[] = []
-  const prepared = await Promise.all(
-    accounts.map(async (account) => {
-      const existing = db.select().from(users).where(eq(users.username, account.username)).get()
-      if (existing)
-        return { ...account, id: existing.id, passwordHash: existing.passwordHash, existing: true }
-      const password =
-        account.role === 'teacher'
-          ? DEMO_TEACHER_CREDENTIALS.password
-          : process.env.NODE_ENV === 'test'
-            ? account.role === 'webmaster'
-              ? 'admin123'
-              : 'alumno123'
-            : randomBytes(12).toString('base64url')
-      const passwordHash = await prepareHash(password)
-      credentials.push({ username: account.username, password, role: account.role })
-      return { ...account, passwordHash, existing: false }
-    })
-  )
+  const prepared: ((typeof accounts)[number] & { passwordHash: string; existing: boolean })[] = []
+  // Argon2 needs 64 MiB per hash. Await each account so a fresh seed fits a 512 MiB instance.
+  for (const account of accounts) {
+    const existing = db.select().from(users).where(eq(users.username, account.username)).get()
+    if (existing) {
+      prepared.push({ ...account, id: existing.id, passwordHash: existing.passwordHash, existing: true })
+      continue
+    }
+    const password =
+      account.role === 'teacher'
+        ? DEMO_TEACHER_CREDENTIALS.password
+        : process.env.NODE_ENV === 'test'
+          ? account.role === 'webmaster'
+            ? 'admin123'
+            : 'alumno123'
+          : randomBytes(12).toString('base64url')
+    const passwordHash = await prepareHash(password)
+    credentials.push({ username: account.username, password, role: account.role })
+    prepared.push({ ...account, passwordHash, existing: false })
+  }
   let committed = false
   db.transaction((tx) => {
     if (tx.select().from(appSettings).where(eq(appSettings.key, SEED_KEY)).get()) return

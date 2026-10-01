@@ -9,6 +9,17 @@ export function Home() {
   const panel = user?.role === 'student' ? '/student' : user ? '/dashboard' : '/login'
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8 sm:py-14 space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-secondary">Tecnología para una clase más participativa</p>
+        <Link
+          to="/proyecto"
+          className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-line bg-surface px-5 py-3 text-accent font-semibold hover:bg-accent-soft transition-colors"
+        >
+          <Tv className="w-5 h-5" />
+          Conoce el proyecto
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

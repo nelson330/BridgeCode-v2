@@ -44,6 +44,8 @@ Las antiguas variables de modo ya no intervienen. Las API `/api/config` y `/api/
 
 ## Interfaz
 
+El botón **Conoce el proyecto**, en la parte superior del inicio, abre `/proyecto`: cinco diapositivas públicas para exponer la propuesta, el problema, las funcionalidades, el flujo de una clase técnica y la demo. Incluye diagramas, animaciones de entrada y salida, guion opcional, navegación por flechas (también Inicio/Fin), pantalla completa y tema claro/oscuro. En móvil y con texto ampliado el contenido permite desplazamiento vertical; la preferencia de movimiento reducido desactiva los desplazamientos animados.
+
 Font Awesome gratuito y las fuentes están empaquetados con la aplicación. Se incluyen temas claro/oscuro, navegación móvil, estados de carga y error, notificaciones accesibles, confirmaciones de acciones, patrones de contraste y respeto por la preferencia de movimiento reducido. Las salas muestran el estado de conexión y desactivan sus acciones cuando se desconectan. El jugador puede volver a unirse mediante el PIN; una nueva incorporación empieza con una nueva puntuación.
 
 ## Comandos

@@ -19,6 +19,7 @@ import {
   Volume2,
   X,
 } from '../../lib/icons'
+import { useTheme } from '../../lib/useTheme'
 import { Button } from '../ui/Button'
 import { Switch } from '../ui/Switch'
 
@@ -28,14 +29,10 @@ export function AppHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [theme, setTheme] = useState(() => localStorage.getItem('ap.theme') || 'dark')
+  const { theme, toggleTheme } = useTheme()
   const [colorblind, setColorblind] = useState(() => localStorage.getItem('ap.colorblind') === 'true')
   const [muted, setMuted] = useState(() => localStorage.getItem('ap.muted') === 'true')
   const [loggingOut, setLoggingOut] = useState(false)
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('ap.theme', theme)
-  }, [theme])
   useEffect(() => {
     document.body.dataset.dt = colorblind ? 'on' : 'off'
     localStorage.setItem('ap.colorblind', String(colorblind))
@@ -75,7 +72,7 @@ export function AppHeader() {
     }
   }
   // Projection and player screens provide their own focused navigation.
-  if (/^\/(host|present|play)\//.test(location.pathname)) return null
+  if (/^\/(host|present|play)\//.test(location.pathname) || location.pathname === '/proyecto') return null
   return (
     <header className="sticky top-0 z-40 max-h-dvh overflow-y-auto border-b border-line bg-surface/95 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-wrap min-h-20 items-center justify-between gap-3">
@@ -105,7 +102,7 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleTheme}
             aria-label={theme === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'}
             title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
             className="px-3"

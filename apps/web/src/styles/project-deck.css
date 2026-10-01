@@ -1,0 +1,599 @@
+.project-deck {
+  --deck-cool: #163d3a;
+  --deck-warm: #403224;
+  --deck-lilac: #302648;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 5% 10%, var(--surface-accent), transparent 55%),
+    var(--surface-canvas);
+}
+:root[data-theme="light"] .project-deck {
+  --deck-cool: #e4f3ee;
+  --deck-warm: #fff2df;
+  --deck-lilac: #eee8fc;
+}
+.deck-header,
+.deck-footer {
+  padding: 1rem clamp(1rem, 4vw, 4rem);
+}
+.deck-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface-canvas);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  border-bottom: 1px solid var(--border-default);
+}
+.deck-brand {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  min-height: 44px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.deck-brand > svg {
+  flex-shrink: 0;
+}
+.deck-brand-subtitle {
+  display: block;
+  color: var(--content-muted);
+  font-family: var(--font-sans);
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.deck-toolbar,
+.deck-navigation {
+  display: flex;
+  flex-shrink: 0;
+  gap: .5rem;
+}
+.deck-toolbar button {
+  min-width: 44px;
+  padding-inline: .85rem;
+}
+.deck-stage {
+  width: 100%;
+  max-width: 1560px;
+  padding: clamp(1.5rem, 3vw, 3rem) clamp(1rem, 4vw, 4rem);
+  margin: auto;
+  overflow: hidden;
+}
+.deck-slide {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.5rem, 2.5vw, 2.5rem);
+}
+.deck-intro {
+  max-width: 1100px;
+}
+.deck-eyebrow,
+.deck-kicker {
+  color: var(--content-accent);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.deck-intro h1 {
+  margin-block: .75rem 1rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 4.5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -.035em;
+}
+.deck-intro h1:focus {
+  outline: none;
+}
+.deck-description {
+  max-width: 850px;
+  color: var(--content-secondary);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.75;
+}
+.deck-overview {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  gap: 2rem;
+}
+.deck-statement {
+  padding: clamp(1.5rem, 3vw, 3rem);
+  border: 1px solid var(--border-default);
+  border-radius: 1.75rem;
+  background: var(--surface-panel);
+}
+.deck-statement > .deck-icon {
+  margin-bottom: 1.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+}
+.deck-statement h2,
+.deck-card h2 {
+  margin-block: .65rem 1rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 2.6vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+.deck-statement > p:last-of-type,
+.deck-card > p:not(.deck-kicker),
+.deck-feature p {
+  color: var(--content-secondary);
+  line-height: 1.7;
+}
+.deck-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1.5rem;
+}
+.deck-tags span {
+  padding: .5rem .75rem;
+  border-radius: 100px;
+  background: var(--surface-elevated);
+  color: var(--content-secondary);
+  font-size: .75rem;
+  font-weight: 600;
+}
+.deck-cycle {
+  display: flex;
+  flex-direction: column;
+}
+.deck-cycle-item > .deck-connector {
+  display: block;
+  margin: .65rem auto;
+  transform: rotate(90deg);
+}
+.deck-node {
+  position: relative;
+  padding: 1.25rem;
+  border: 1px solid var(--border-default);
+  border-radius: 1.2rem;
+  background: var(--surface-panel);
+}
+.deck-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: .85rem;
+  background: var(--surface-accent);
+  color: var(--content-accent);
+}
+.deck-step {
+  position: absolute;
+  inset: 1.25rem 1.25rem auto auto;
+  color: var(--content-muted);
+  font-family: var(--font-display);
+  font-size: .85rem;
+  font-weight: 700;
+}
+.deck-node h3 {
+  margin-block: .75rem .25rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.deck-node p {
+  color: var(--content-secondary);
+  font-size: .85rem;
+  line-height: 1.6;
+}
+.deck-connector {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--content-accent);
+}
+.deck-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.deck-card {
+  padding: clamp(1.25rem, 2.5vw, 2.25rem);
+  border: 1px solid var(--border-default);
+  border-radius: 1.5rem;
+  background: var(--surface-panel);
+}
+.deck-card-warm {
+  background: var(--deck-warm);
+}
+.deck-card-cool {
+  background: var(--deck-cool);
+}
+.deck-card-lilac {
+  background: var(--deck-lilac);
+}
+.deck-list {
+  display: grid;
+  gap: 1rem;
+  padding-top: .75rem;
+  color: var(--content-secondary);
+  font-size: .95rem;
+}
+.deck-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  line-height: 1.65;
+}
+.deck-list svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin-top: .25rem;
+  color: var(--content-accent);
+}
+.deck-takeaway {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-left: 3px solid var(--content-accent);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.deck-takeaway svg {
+  flex-shrink: 0;
+  margin-top: .2rem;
+  color: var(--content-accent);
+}
+.deck-card-heading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--content-accent);
+}
+.deck-card-heading > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+.deck-mini-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem;
+  margin-top: 1.5rem;
+}
+.deck-mini-flow > span {
+  padding: .5rem .7rem;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  border-radius: .7rem;
+  font-size: .75rem;
+  font-weight: 700;
+}
+.deck-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.deck-feature {
+  padding: .5rem;
+}
+.deck-feature > svg {
+  color: var(--content-accent);
+  margin-bottom: .75rem;
+}
+.deck-feature h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: .35rem;
+}
+.deck-feature p {
+  font-size: .8rem;
+}
+.deck-workflow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+.deck-workflow-item {
+  position: relative;
+}
+.deck-workflow-item .deck-node {
+  height: 100%;
+}
+.deck-workflow-item > .deck-connector {
+  position: absolute;
+  right: -1.25rem;
+  top: 50%;
+}
+.deck-context h2 {
+  font-size: 1.5rem;
+}
+.deck-card .deck-caption {
+  margin-top: 1rem;
+  color: var(--content-muted);
+  font-size: .75rem;
+  line-height: 1.65;
+}
+.deck-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 1.5rem;
+  margin-top: 1.5rem;
+  border-block: 1px solid var(--border-default);
+}
+.deck-metrics strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  color: var(--content-accent);
+  line-height: 1.2;
+}
+.deck-metrics span {
+  display: block;
+  margin-top: .35rem;
+  color: var(--content-secondary);
+  font-size: .75rem;
+}
+.deck-demo-actions {
+  display: grid;
+  gap: 1.75rem;
+}
+.deck-closing {
+  margin-block: .75rem 1.5rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -.035em;
+}
+.deck-closing > span {
+  color: var(--content-accent);
+}
+.deck-checklist {
+  display: grid;
+  gap: .85rem;
+}
+.deck-checklist li {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--content-secondary);
+  font-size: .9rem;
+  line-height: 1.7;
+}
+.deck-checklist li > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--surface-accent);
+  color: var(--content-accent);
+  font-weight: 800;
+}
+.deck-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.deck-primary-link,
+.deck-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  min-height: 48px;
+  padding: .85rem 1rem;
+  border-radius: .85rem;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.deck-primary-link {
+  background: #6d28d9;
+  color: white;
+}
+.deck-primary-link:hover {
+  background: #5b21b6;
+}
+.deck-secondary-link {
+  border: 1px solid var(--border-default);
+  background: var(--surface-panel);
+}
+.deck-secondary-link:hover {
+  background: var(--surface-elevated);
+}
+.deck-notes {
+  padding: 1.25rem;
+  background: var(--surface-panel);
+  border: 1px dashed var(--border-default);
+  border-radius: 1rem;
+}
+.deck-notes h2 {
+  color: var(--content-accent);
+  font-weight: 700;
+  font-size: .85rem;
+  margin-bottom: .5rem;
+}
+.deck-notes p {
+  color: var(--content-secondary);
+  line-height: 1.7;
+  font-size: .85rem;
+}
+.deck-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  margin-top: auto;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-panel);
+}
+.deck-progress {
+  height: 3px;
+  border-radius: 10px;
+  background: var(--surface-elevated);
+  overflow: hidden;
+  margin-bottom: .85rem;
+}
+.deck-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--content-accent);
+  transition: width .3s ease;
+}
+.deck-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.deck-control-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.deck-counter {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.deck-counter > span {
+  color: var(--content-muted);
+  font-size: .85rem;
+}
+.deck-notes-toggle {
+  color: var(--content-secondary);
+  font-size: .75rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.deck-dots {
+  display: flex;
+}
+.deck-dots button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: .5rem;
+  cursor: pointer;
+  border-radius: .65rem;
+}
+.deck-dots button > span {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 100px;
+  background: var(--content-muted);
+  transition: width .2s ease;
+}
+.deck-dots button[aria-current="step"] > span {
+  width: 1.5rem;
+  background: var(--content-accent);
+}
+.deck-keyboard-hint {
+  margin-top: .5rem;
+  color: var(--content-muted);
+  text-align: right;
+  font-size: .65rem;
+}
+@media (max-width: 1000px) {
+  .deck-workflow {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .deck-workflow-item > .deck-connector {
+    right: 50%;
+    top: auto;
+    bottom: -1.25rem;
+    transform: rotate(90deg);
+  }
+  .deck-workflow .deck-node {
+    padding-left: 4.5rem;
+  }
+  .deck-workflow .deck-icon {
+    position: absolute;
+    left: 1.25rem;
+    top: 1.5rem;
+  }
+  .deck-workflow .deck-node h3 {
+    margin-top: 0;
+    padding-right: 2rem;
+  }
+  .deck-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .deck-overview {
+    gap: 1.25rem;
+  }
+}
+@media (max-width: 700px) {
+  .deck-overview,
+  .deck-comparison {
+    grid-template-columns: 1fr;
+  }
+  .deck-brand-subtitle {
+    display: none;
+  }
+  .deck-header {
+    padding-block: .75rem;
+  }
+  .deck-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .deck-control-meta {
+    gap: .5rem;
+  }
+  .deck-dots {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+  }
+  .deck-navigation {
+    gap: .35rem;
+  }
+  .deck-navigation button {
+    padding-inline: .8rem;
+  }
+  .deck-navigation button span {
+    display: none;
+  }
+  .deck-keyboard-hint {
+    display: none;
+  }
+  .deck-footer {
+    padding-block: .75rem;
+  }
+  .deck-metrics {
+    gap: .5rem;
+  }
+  .deck-takeaway {
+    padding-inline: 1rem;
+  }
+}
+@media (max-height: 600px) and (min-width: 701px) {
+  .deck-header,
+  .deck-footer {
+    position: static;
+  }
+  .deck-stage {
+    padding-block: 1.5rem;
+  }
+  .deck-intro h1 {
+    font-size: 2.5rem;
+  }
+}

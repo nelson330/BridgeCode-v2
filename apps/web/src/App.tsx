@@ -9,6 +9,9 @@ const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: mo
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })))
 const Forum = lazy(() => import('./pages/Forum').then((module) => ({ default: module.Forum })))
 const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })))
+const ProjectDeck = lazy(() =>
+  import('./pages/ProjectDeck').then((module) => ({ default: module.ProjectDeck }))
+)
 const HostRoom = lazy(() => import('./pages/HostRoom').then((module) => ({ default: module.HostRoom })))
 const JoinGame = lazy(() => import('./pages/JoinGame').then((module) => ({ default: module.JoinGame })))
 const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })))
@@ -73,6 +76,7 @@ export function App() {
                 <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={<Home />} />
+                  <Route path="/proyecto" element={<ProjectDeck />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/join" element={<JoinGame />} />
                   <Route path="/play/:pin" element={<PlayerRoom />} />

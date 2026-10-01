@@ -1,3 +1,6 @@
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { sound } from '../../lib/audio-synth'
 import {
   BookOpen,
   CheckCircle2,
@@ -7,10 +10,7 @@ import {
   Image as ImageIcon,
   Sparkles,
   X,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { sound } from '../../lib/audio-synth'
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
@@ -60,7 +60,7 @@ export function ReadingViewerModal({
       imgList.push({ name: match[1] || 'Imagen de estudio', url: match[2] || '' })
     }
 
-    // Match PDF links: [name](url.pdf) or 📄 **Documento Adjunto:** [name](url)
+    // Match PDF links: [name](url.pdf) or  **Documento Adjunto:** [name](url)
     const pdfRegex = /\[([^\]]+)\]\(([^)]+\.pdf[^)]*)\)/gi
     while (true) {
       match = pdfRegex.exec(raw)
@@ -68,7 +68,7 @@ export function ReadingViewerModal({
       pdfList.push({ name: match[1] || 'Documento PDF', url: match[2] || '' })
     }
 
-    // Match External links: 🔗 **Enlace:** [title](url) or regular [title](url)
+    // Match External links:  **Enlace:** [title](url) or regular [title](url)
     const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g
     while (true) {
       match = linkRegex.exec(raw)
@@ -81,8 +81,8 @@ export function ReadingViewerModal({
     // Remove markdown image & pdf tags for clean text reading
     const textWithoutMedia = raw
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '')
-      .replace(/(?:📄\s*)?\*\*Documento Adjunto:\*\*\s*\[([^\]]+)\]\(([^)]+)\)/g, '')
-      .replace(/(?:🔗\s*)?\*\*Enlace de Estudio:\*\*\s*\[([^\]]+)\]\(([^)]+)\)/g, '')
+      .replace(/(?:\s*)?\*\*Documento Adjunto:\*\*\s*\[([^\]]+)\]\(([^)]+)\)/g, '')
+      .replace(/(?:\s*)?\*\*Enlace de Estudio:\*\*\s*\[([^\]]+)\]\(([^)]+)\)/g, '')
       .trim()
 
     return {
@@ -114,12 +114,12 @@ export function ReadingViewerModal({
       <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2">
         {/* Homework Context Badge */}
         {homework && (
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 to-indigo-950/80 border border-purple-500/30 flex items-center justify-between gap-4">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-hero/80 to-accent-soft/80 border border-purple-500/30 flex items-center justify-between gap-4">
             <div className="space-y-0.5">
               <span className="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">
                 Tarea Asignada
               </span>
-              <h4 className="font-bold text-white text-sm">{homework.title}</h4>
+              <h4 className="font-bold text-foreground text-sm">{homework.title}</h4>
             </div>
             <Badge variant={homework.completed ? 'success' : 'warning'}>
               {homework.completed ? t('student.readingConfirmed') : `${t('student.pending')} (+100 pts)`}
@@ -129,34 +129,34 @@ export function ReadingViewerModal({
 
         {/* Text Content (preserved verbatim from teacher) */}
         {cleanText && (
-          <div className="p-4 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-200 text-sm leading-relaxed space-y-4">
-            <h4 className="font-bold text-white text-base flex items-center gap-2 border-b border-slate-800 pb-2">
-              <BookOpen className="w-5 h-5 text-indigo-400" />
+          <div className="p-4 sm:p-6 rounded-2xl bg-surface/90 border border-line text-foreground text-sm leading-relaxed space-y-4">
+            <h4 className="font-bold text-foreground text-base flex items-center gap-2 border-b border-line pb-2">
+              <BookOpen className="w-5 h-5 text-accent" />
               <span>Apuntes y Contenido Teórico</span>
             </h4>
-            <MarkdownText content={cleanText} className="text-slate-200 text-sm leading-relaxed" />
+            <MarkdownText content={cleanText} className="text-foreground text-sm leading-relaxed" />
           </div>
         )}
 
         {/* Embedded Images Gallery */}
         {images.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-bold text-white text-sm flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-emerald-400" />
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-success" />
               <span>Imágenes e Ilustraciones de Estudio ({images.length})</span>
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {images.map((img) => (
                 <div
                   key={img.url}
-                  className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 space-y-2 p-2"
+                  className="rounded-2xl overflow-hidden border border-line bg-canvas space-y-2 p-2"
                 >
                   <img
                     src={img.url}
                     alt={img.name}
                     className="w-full h-48 object-cover rounded-xl hover:scale-[1.02] transition-transform duration-300"
                   />
-                  <span className="text-xs font-semibold text-slate-300 block px-2 pb-1 truncate">
+                  <span className="text-xs font-semibold text-secondary block px-2 pb-1 truncate">
                     {img.name}
                   </span>
                 </div>
@@ -168,8 +168,8 @@ export function ReadingViewerModal({
         {/* Embedded Online PDF Viewer */}
         {pdfs.length > 0 && (
           <div className="space-y-4">
-            <h4 className="font-bold text-white text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-rose-400" />
+            <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-danger" />
               <span>Documentos PDF Adjuntos (Lectura en Línea)</span>
             </h4>
 
@@ -186,7 +186,7 @@ export function ReadingViewerModal({
                   }}
                   className="gap-2 text-xs"
                 >
-                  <FileText className="w-4 h-4 text-rose-400" />
+                  <FileText className="w-4 h-4 text-danger" />
                   <span>{pdf.name}</span>
                   <Eye className="w-3.5 h-3.5 ml-1 opacity-70" />
                 </Button>
@@ -195,14 +195,14 @@ export function ReadingViewerModal({
 
             {/* Active PDF Viewer Iframe */}
             {selectedPdfUrl && (
-              <div className="p-2 rounded-2xl bg-slate-950 border border-slate-700 shadow-2xl space-y-2">
-                <div className="flex items-center justify-between px-3 py-1 text-xs text-slate-400">
+              <div className="p-2 rounded-2xl bg-canvas border border-line shadow-2xl space-y-2">
+                <div className="flex items-center justify-between px-3 py-1 text-xs text-muted">
                   <span>Visor de Documento PDF en Línea</span>
                   <a
                     href={selectedPdfUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-indigo-400 hover:underline flex items-center gap-1 font-semibold"
+                    className="text-accent hover:underline flex items-center gap-1 font-semibold"
                   >
                     <span>Abrir en Pestaña Completa</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -211,7 +211,7 @@ export function ReadingViewerModal({
                 <iframe
                   src={selectedPdfUrl}
                   title="Visor de PDF"
-                  className="w-full h-[520px] rounded-xl border border-slate-800 bg-slate-900"
+                  className="w-full h-[520px] rounded-xl border border-line bg-surface"
                 />
               </div>
             )}
@@ -220,8 +220,8 @@ export function ReadingViewerModal({
 
         {/* External Links */}
         {links.length > 0 && (
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-            <h4 className="font-bold text-white text-xs uppercase tracking-wider">Enlaces de Apoyo</h4>
+          <div className="p-4 rounded-2xl bg-surface border border-line space-y-2">
+            <h4 className="font-bold text-foreground text-xs uppercase tracking-wider">Enlaces de Apoyo</h4>
             <div className="flex flex-col gap-1.5">
               {links.map((link) => (
                 <a
@@ -229,7 +229,7 @@ export function ReadingViewerModal({
                   href={link.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 font-medium transition-colors"
+                  className="text-xs text-accent hover:text-accent flex items-center gap-1.5 font-medium transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>{link.title}</span>
@@ -240,7 +240,7 @@ export function ReadingViewerModal({
         )}
 
         {/* Bottom Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-between pt-4 border-t border-line">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.close')}
           </Button>

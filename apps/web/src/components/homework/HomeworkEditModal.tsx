@@ -1,9 +1,11 @@
-import { BookOpen, Calendar, CheckSquare, ClipboardList, Edit3, MessageSquare } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
+import { notify } from '../../lib/feedback'
+import { BookOpen, Calendar, CheckSquare, ClipboardList, Edit3, MessageSquare } from '../../lib/icons'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { FormError } from '../ui/FormError'
 import { Input } from '../ui/Input'
 
 interface HomeworkEditModalProps {
@@ -30,6 +32,7 @@ export function HomeworkEditModal({
   homework,
   onHomeworkUpdated,
 }: HomeworkEditModalProps) {
+  const [formError, setFormError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [kind, setKind] = useState<'quiz' | 'reading' | 'discussion'>('quiz')
   const [instructions, setInstructions] = useState('')
@@ -55,6 +58,7 @@ export function HomeworkEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     if (!homework || !title.trim()) return
 
     setIsSaving(true)
@@ -76,7 +80,7 @@ export function HomeworkEditModal({
       onOpenChange(false)
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al actualizar la tarea')
+      setFormError(err.message || 'Error al actualizar la tarea')
     } finally {
       setIsSaving(false)
     }
@@ -91,17 +95,22 @@ export function HomeworkEditModal({
       className="max-w-xl"
     >
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+        <FormError message={formError} />
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Lección Vinculada:</span>
-            <span className="text-xs font-bold text-indigo-400">{homework?.lessonTitle}</span>
+          <div className="p-3 rounded-xl bg-canvas border border-line flex items-center justify-between">
+            <span className="text-xs text-muted">Lección Vinculada:</span>
+            <span className="text-xs font-bold text-accent">{homework?.lessonTitle}</span>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="homeworkeditmodal-field-1"
+            >
               Título de la Tarea
             </label>
             <Input
+              id="homeworkeditmodal-field-1"
               placeholder="Ej: Repaso de Leyes de Newton"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -112,7 +121,10 @@ export function HomeworkEditModal({
 
           {/* Modalidad de Tarea */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block"
+              htmlFor="homeworkeditmodal-field-2"
+            >
               Tipo de Actividad
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -121,11 +133,11 @@ export function HomeworkEditModal({
                 onClick={() => setKind('quiz')}
                 className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all ${
                   kind === 'quiz'
-                    ? 'bg-indigo-600/20 border-indigo-500 text-white'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    ? 'bg-indigo-600/20 border-indigo-500 text-foreground'
+                    : 'bg-canvas border-line text-muted hover:border-line'
                 }`}
               >
-                <CheckSquare className="w-5 h-5 text-indigo-400" />
+                <CheckSquare className="w-5 h-5 text-accent" />
                 <span className="text-xs font-bold">Cuestionario</span>
               </button>
 
@@ -134,8 +146,8 @@ export function HomeworkEditModal({
                 onClick={() => setKind('reading')}
                 className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all ${
                   kind === 'reading'
-                    ? 'bg-purple-600/20 border-purple-500 text-white'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    ? 'bg-purple-600/20 border-purple-500 text-foreground'
+                    : 'bg-canvas border-line text-muted hover:border-line'
                 }`}
               >
                 <BookOpen className="w-5 h-5 text-purple-400" />
@@ -147,35 +159,40 @@ export function HomeworkEditModal({
                 onClick={() => setKind('discussion')}
                 className={`p-3 rounded-xl border text-left flex flex-col items-center justify-center gap-1.5 transition-all ${
                   kind === 'discussion'
-                    ? 'bg-amber-600/20 border-amber-500 text-white'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    ? 'bg-amber-600/20 border-amber-500 text-foreground'
+                    : 'bg-canvas border-line text-muted hover:border-line'
                 }`}
               >
-                <MessageSquare className="w-5 h-5 text-amber-400" />
+                <MessageSquare className="w-5 h-5 text-warning" />
                 <span className="text-xs font-bold">Debate</span>
               </button>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+            <label className="text-xs font-bold text-secondary uppercase tracking-wider block">
               Instrucciones Específicas
             </label>
             <textarea
+              id="homeworkeditmodal-field-2"
               rows={3}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="Instrucciones para tus alumnos..."
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2.5 rounded-xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+              <label
+                className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+                htmlFor="homeworkeditmodal-field-3"
+              >
                 Fecha y Hora Límite
               </label>
               <Input
+                id="homeworkeditmodal-field-3"
                 type="datetime-local"
                 value={dueAt}
                 onChange={(e) => setDueAt(e.target.value)}
@@ -184,10 +201,14 @@ export function HomeworkEditModal({
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+              <label
+                className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+                htmlFor="homeworkeditmodal-field-4"
+              >
                 Límite de Intentos
               </label>
               <Input
+                id="homeworkeditmodal-field-4"
                 type="number"
                 min={1}
                 max={10}
@@ -198,7 +219,7 @@ export function HomeworkEditModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancelar
           </Button>

@@ -2,8 +2,6 @@
   "app": {
     "title": "AulaPlay",
     "tagline": "Interactive educational gamification for the classroom",
-    "modeLocal": "Local Mode (Projection)",
-    "modeHosted": "Hosted Mode",
     "themeLight": "Light Mode",
     "themeDark": "Dark Mode",
     "colorblindMode": "Color-blind Mode",

@@ -6,7 +6,7 @@ import { createHttpApp } from '../../src/core/http/app'
 
 describe('Auth, Roles, Students & Classes (Fase 2)', () => {
   beforeEach(() => {
-    loadConfig({ MODE: 'local' })
+    loadConfig({})
     initDb(':memory:')
   })
 
@@ -151,20 +151,20 @@ describe('Auth, Roles, Students & Classes (Fase 2)', () => {
       headers: { 'Content-Type': 'application/json', Cookie: teacherCookie },
       body: JSON.stringify({
         displayName: 'Mateo López',
-        username: 'mateo.lopez',
+        username: 'mateo.prueba',
         password: 'miClaveSegura123',
       }),
     })
     expect(createStudentRes.status).toBe(201)
     const { student } = (await createStudentRes.json()) as any
-    expect(student.username).toBe('mateo.lopez')
+    expect(student.username).toBe('mateo.prueba')
     expect(student.displayName).toBe('Mateo López')
 
     // 3. Student logs in immediately with custom credentials
     const studentLogin1 = await app.request('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'mateo.lopez', password: 'miClaveSegura123' }),
+      body: JSON.stringify({ username: 'mateo.prueba', password: 'miClaveSegura123' }),
     })
     expect(studentLogin1.status).toBe(200)
     const student1Data = (await studentLogin1.json()) as any

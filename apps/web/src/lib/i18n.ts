@@ -14,7 +14,7 @@ i18n
     },
     fallbackLng: 'es',
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: 'ap.locale',
       caches: ['localStorage'],
     },

@@ -87,7 +87,7 @@ export const sessionMiddleware: MiddlewareHandler = async (c, next) => {
     return next()
   }
 
-  const { user, teacherProfile } = found[0]
+  const { user } = found[0]
 
   if (user.status === 'banned') {
     await db.delete(sessions).where(eq(sessions.id, token))
@@ -108,7 +108,6 @@ export const sessionMiddleware: MiddlewareHandler = async (c, next) => {
     role: user.role as UserRole,
     status: user.status as any,
     mustChangePassword: user.mustChangePassword,
-    adminLocal: teacherProfile?.adminLocal || false,
   })
   c.set('sessionToken', token)
 

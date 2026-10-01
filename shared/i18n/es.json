@@ -2,8 +2,6 @@
   "app": {
     "title": "AulaPlay",
     "tagline": "Gamificación educativa interactiva para el aula",
-    "modeLocal": "Modo Local (Proyección)",
-    "modeHosted": "Modo Hosted",
     "themeLight": "Modo Claro",
     "themeDark": "Modo Oscuro",
     "colorblindMode": "Modo Daltónico",
@@ -70,7 +68,7 @@
       "title": "Lecciones & Contenidos Teóricos",
       "subtitle": "Crea unidades con material de lectura, PDFs, imágenes y ejercicios interactivos.",
       "newLesson": "Nueva Lección",
-      "launchLive": "Lanzar en Datashow",
+      "launchLive": "Abrir lección",
       "createExercise": "Crear Ejercicio Manual",
       "publishForum": "Publicar en Foro",
       "deleteLesson": "Eliminar Lección",

@@ -2,27 +2,26 @@
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Deploy with: `render blueprint launch` (or import via Render dashboard).
-# This blueprint provisions ONE Docker web service. Persistent disk is NOT
-# attached: SQLite lives on the ephemeral container disk and is re-seeded
-# on every deploy. For demos/showcase only — see README for production
-# guidance (Postgres + S3 + Managed Redis).
+# One Docker service with persistent SQLite storage.
 
 services:
   - type: web
     name: aulaplay
     runtime: docker
-    plan: starter                 # change to 'free' or 'standard' as needed
+    plan: starter
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
+    disk:
+      name: aulaplay-data
+      mountPath: /var/data
+      sizeGB: 1
     autoDeploy: true              # redeploy on every push to the connected branch
     envVars:
       # ── Required ──────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
-      - key: MODE
-        value: hosted
       - key: PORT
         value: "3000"
       - key: BASE_URL
@@ -51,7 +50,7 @@ services:
         value: "10"
       # ── Backup ─────────────────────────────────────────────────────────────
       - key: BACKUP_ENABLED
-        value: "false"             # disabled: no persistent disk in this config
+        value: "true"
       - key: BACKUP_INTERVAL_H
         value: "24"
       - key: BACKUP_RETENTION

@@ -39,6 +39,7 @@ export class GameRoom {
   public pin: string
   public mode: GameMode
   public status: SessionStatus = 'lobby'
+  public phase: 'lobby' | 'countdown' | 'question' | 'result' | 'finished' = 'lobby'
   public exercises: any[] = []
   public currentExerciseIndex = -1
   public remainingTimeSec = 0
@@ -75,6 +76,16 @@ export class GameRoom {
 
   public addHostSocket(socket: ClientSocket) {
     this.hostSockets.add(socket)
+    socket.send(
+      JSON.stringify({
+        type: 'SESSION_STATE',
+        phase: this.phase,
+        exerciseIndex: this.currentExerciseIndex,
+        totalExercises: this.exercises.length,
+        remainingSec: this.remainingTimeSec,
+        participants: this.getParticipantsState(),
+      })
+    )
     socket.send(
       JSON.stringify({
         type: 'PARTICIPANT_LIST',
@@ -215,6 +226,8 @@ export class GameRoom {
   }
 
   private startPreQuestionCountdown(index: number) {
+    this.phase = 'countdown'
+    this.remainingTimeSec = PRE_QUESTION_SEC
     if (index >= this.exercises.length) {
       this.finishGame()
       return
@@ -250,6 +263,7 @@ export class GameRoom {
     let countdown = PRE_QUESTION_SEC
     this.timerInterval = setInterval(() => {
       countdown -= 1
+      this.remainingTimeSec = countdown
       this.broadcast({
         type: 'TIMER_TICK',
         remainingSec: countdown,
@@ -263,6 +277,7 @@ export class GameRoom {
   }
 
   public loadExercise(index: number) {
+    this.phase = 'question'
     if (index >= this.exercises.length) {
       this.finishGame()
       return
@@ -365,7 +380,8 @@ export class GameRoom {
 
   public async submitAnswer(participantId: string, answerJson: string, latencyMs: number) {
     const participant = this.participants.get(participantId)
-    if (!participant || participant.hasAnswered || this.status !== 'active') return
+    if (!participant || participant.hasAnswered || this.status !== 'active' || this.phase !== 'question')
+      return
 
     const now = Date.now()
     if (now - participant.lastSubmitTime < 100) return // Rate limit
@@ -386,6 +402,36 @@ export class GameRoom {
       this.mode === 'race' ? 'race' : 'classic',
       multiplier
     )
+
+    // Persist before acknowledging or changing score; a failed write leaves this answer retryable.
+    const db = getDb()
+    db.transaction((tx) => {
+      if (latencyMs < 300 && correct) {
+        tx.insert(anticheatEvents)
+          .values({
+            id: nanoid(),
+            sessionId: this.sessionId,
+            userId: participant.userId || null,
+            type: 'SUSPICIOUS_LATENCY',
+            detailJson: JSON.stringify({ latencyMs, exerciseId: currentEx.id }),
+          })
+          .run()
+      }
+      tx.insert(answers)
+        .values({
+          id: nanoid(),
+          sessionId: this.sessionId,
+          exerciseId: currentEx.id,
+          lessonId: currentEx.lessonId,
+          userId: participant.userId || null,
+          answerJson,
+          isCorrect: correct,
+          latencyMs,
+          pointsEarned,
+          kind: 'session',
+        })
+        .run()
+    })
 
     participant.hasAnswered = true
     participant.lastAnswerCorrect = correct
@@ -422,33 +468,6 @@ export class GameRoom {
       }
     }
 
-    // Anti-cheat check: Suspiciously fast response (< 300ms) with non-trivial exercise
-    if (latencyMs < 300 && correct) {
-      const db = getDb()
-      await db.insert(anticheatEvents).values({
-        id: nanoid(),
-        sessionId: this.sessionId,
-        userId: participant.userId || null,
-        type: 'SUSPICIOUS_LATENCY',
-        detailJson: JSON.stringify({ latencyMs, exerciseId: currentEx.id }),
-      })
-    }
-
-    // Persist answer in database
-    const db = getDb()
-    await db.insert(answers).values({
-      id: nanoid(),
-      sessionId: this.sessionId,
-      exerciseId: currentEx.id,
-      lessonId: currentEx.lessonId,
-      userId: participant.userId || null,
-      answerJson,
-      isCorrect: correct,
-      latencyMs,
-      pointsEarned,
-      kind: 'session',
-    })
-
     // Broadcast updated answer stats
     this.broadcast({
       type: 'ANSWER_STATS',
@@ -466,7 +485,10 @@ export class GameRoom {
 
   public revealResults() {
     const currentEx = this.exercises[this.currentExerciseIndex]
-    if (!currentEx) return
+    if (!currentEx || this.phase !== 'question') return
+    this.phase = 'result'
+    this.remainingTimeSec = 0
+    if (this.timerInterval) clearInterval(this.timerInterval)
 
     // Build answer distribution
     const distribution: Array<{ optionIndex: number; count: number; label?: string }> = []
@@ -528,8 +550,10 @@ export class GameRoom {
       leaderboard: this.getParticipantsState(),
     })
 
-    // After a delay, send scoreboard
+    // Ignore delayed scoreboards after advancing or finishing.
+    const resultIndex = this.currentExerciseIndex
     setTimeout(() => {
+      if (this.phase !== 'result' || this.currentExerciseIndex !== resultIndex) return
       this.broadcast({
         type: 'SCOREBOARD',
         leaderboard: this.getParticipantsState().slice(0, 5),
@@ -576,9 +600,6 @@ export class GameRoom {
   }
 
   public async finishGame() {
-    this.status = 'finished'
-    if (this.timerInterval) clearInterval(this.timerInterval)
-
     const podium = this.getParticipantsState().slice(0, 3)
 
     // Build question stats summary
@@ -589,12 +610,6 @@ export class GameRoom {
       totalCount: qs.totalCount,
       avgLatencyMs: qs.totalCount > 0 ? Math.round(qs.totalLatencyMs / qs.totalCount) : 0,
     }))
-
-    this.broadcast({
-      type: 'GAME_FINISHED',
-      podium,
-      questionStats: questionStatsSummary,
-    })
 
     const db = getDb()
     await db
@@ -609,6 +624,14 @@ export class GameRoom {
         endedAt: new Date(),
       })
       .where(eq(liveSessions.id, this.sessionId))
+    this.status = 'finished'
+    this.phase = 'finished'
+    if (this.timerInterval) clearInterval(this.timerInterval)
+    this.broadcast({
+      type: 'GAME_FINISHED',
+      podium,
+      questionStats: questionStatsSummary,
+    })
   }
 }
 

@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import {
   ArrowDownUp,
   Check,
@@ -17,11 +18,7 @@ import {
   Triangle,
   Type,
   XCircle,
-} from 'lucide-react'
-import { motion } from 'motion/react'
-import { useState } from 'react'
-import { sound } from '../../lib/audio-synth'
-import { triggerConfetti } from '../../lib/confetti'
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { MarkdownText } from '../ui/MarkdownText'
 
@@ -38,9 +35,8 @@ interface QuestionDisplayProps {
     timeSec?: number
     pointsMultiplier?: number
   }
-  isLocalMode?: boolean
+  variant?: 'presentation' | 'live'
   isRevealed?: boolean
-  onLocalAnswerSubmit?: (isCorrect: boolean) => void
 }
 
 const OPTION_STYLES = [
@@ -57,7 +53,7 @@ const OPTION_STYLES = [
     label: 'B',
   },
   {
-    bg: 'bg-amber-500 hover:bg-amber-400 border-amber-300 text-slate-950',
+    bg: 'bg-amber-700 hover:bg-amber-600 border-amber-500',
     pattern: 'pattern-circle',
     icon: Circle,
     label: 'C',
@@ -85,15 +81,7 @@ const TYPE_LABELS: Record<string, { label: string; icon: typeof HelpCircle }> = 
   slide: { label: 'INFORMATIVO', icon: Lightbulb },
 }
 
-export function QuestionDisplay({
-  exercise,
-  isLocalMode = false,
-  isRevealed = false,
-  onLocalAnswerSubmit,
-}: QuestionDisplayProps) {
-  const [selectedLocalIndex, setSelectedLocalIndex] = useState<number | null>(null)
-  const [revealedLocal, setRevealedLocal] = useState(false)
-
+export function QuestionDisplay({ exercise, variant = 'live', isRevealed = false }: QuestionDisplayProps) {
   let options: any[] = []
   try {
     if (exercise.optionsJson) {
@@ -112,32 +100,7 @@ export function QuestionDisplay({
     correctAnswer = null
   }
 
-  const handleOptionClick = (index: number) => {
-    if (!isLocalMode || revealedLocal) return
-
-    setSelectedLocalIndex(index)
-    setRevealedLocal(true)
-
-    let isCorrect = false
-    if (exercise.type === 'mc') {
-      isCorrect = correctAnswer?.correctIndex === index
-    } else if (exercise.type === 'tf') {
-      isCorrect = correctAnswer?.isTrue === (index === 0)
-    }
-
-    if (isCorrect) {
-      sound.playCorrect()
-      triggerConfetti()
-    } else {
-      sound.playIncorrect()
-    }
-
-    if (onLocalAnswerSubmit) {
-      onLocalAnswerSubmit(isCorrect)
-    }
-  }
-
-  const showResult = isRevealed || revealedLocal
+  const showResult = isRevealed
   const typeInfo = TYPE_LABELS[exercise.type] || { label: 'PREGUNTA', icon: HelpCircle }
   const TypeIcon = typeInfo.icon
 
@@ -147,22 +110,23 @@ export function QuestionDisplay({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl bg-slate-900/90 border-2 border-indigo-500/30 p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-4 min-h-[120px] flex flex-col justify-center"
+        className="rounded-3xl bg-surface/90 border-2 border-indigo-500/30 p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-4 min-h-[120px] flex flex-col justify-center"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider mx-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-accent text-xs font-bold uppercase tracking-wider mx-auto">
           <TypeIcon className="w-4 h-4" />
-          {typeInfo.label} • {exercise.points || 1} Pts
-          {exercise.pointsMultiplier && exercise.pointsMultiplier > 1 && (
-            <span className="text-amber-400">×{exercise.pointsMultiplier}</span>
+          {typeInfo.label}
+          {variant === 'live' && ` • ${exercise.points || 1} Pts`}
+          {variant === 'live' && exercise.pointsMultiplier && exercise.pointsMultiplier > 1 && (
+            <span className="text-warning">×{exercise.pointsMultiplier}</span>
           )}
         </div>
 
-        <div className="font-display font-black text-xl sm:text-2xl lg:text-3xl text-white tracking-tight leading-relaxed max-w-3xl mx-auto">
+        <div className="font-display font-black text-xl sm:text-2xl lg:text-3xl text-foreground tracking-tight leading-relaxed max-w-3xl mx-auto">
           <MarkdownText content={exercise.prompt} />
         </div>
 
         {exercise.mediaUrl && exercise.type !== 'pin_drop' && (
-          <div className="mt-4 max-h-64 overflow-hidden rounded-2xl border border-slate-800 flex justify-center">
+          <div className="mt-4 max-h-64 overflow-hidden rounded-2xl border border-line flex justify-center">
             <img src={exercise.mediaUrl} alt="Material multimedia" className="object-cover h-full" />
           </div>
         )}
@@ -182,43 +146,34 @@ export function QuestionDisplay({
               isOptionCorrect = correctAnswer?.isTrue === (index === 0)
             }
 
-            const isSelected = selectedLocalIndex === index
-
             return (
-              <motion.button
+              <motion.div
                 key={index}
-                whileHover={isLocalMode && !showResult ? { scale: 1.02, y: -2 } : {}}
-                whileTap={isLocalMode && !showResult ? { scale: 0.98 } : {}}
-                onClick={() => handleOptionClick(index)}
-                disabled={!isLocalMode || showResult}
-                className={`relative flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 font-display font-extrabold text-white shadow-xl transition-all select-none text-left min-h-[90px] ${
+                className={`relative flex items-center gap-4 p-5 sm:p-6 rounded-2xl border-2 font-display font-extrabold text-on-accent shadow-xl transition-all select-none text-left min-h-[90px] ${
                   showResult
                     ? isOptionCorrect
-                      ? 'bg-emerald-600 border-emerald-300 ring-4 ring-emerald-500/40'
-                      : isSelected
-                        ? 'bg-rose-700/80 border-rose-400 opacity-80'
-                        : 'bg-slate-900/60 border-slate-800 opacity-40'
+                      ? 'bg-emerald-700 border-emerald-300 ring-4 ring-emerald-500/40'
+                      : 'bg-selected border-line text-foreground'
                     : `${style?.bg} ${style?.pattern}`
-                } ${isLocalMode && !showResult ? 'cursor-pointer' : 'cursor-default'}`}
+                } cursor-default`}
               >
                 <div className="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center shrink-0 border border-white/20">
-                  <Icon className="w-6 h-6 text-white" />
+                  <Icon className="w-6 h-6 text-on-accent" />
                 </div>
 
                 <div className="flex-1 text-base sm:text-lg md:text-xl drop-shadow-md leading-snug">
+                  <span className="text-sm font-bold opacity-80 mr-2">{style?.label}.</span>
                   <MarkdownText content={option} />
                 </div>
 
                 {showResult && (
                   <div className="shrink-0">
                     {isOptionCorrect ? (
-                      <CheckCircle2 className="w-8 h-8 text-white drop-shadow-lg" />
-                    ) : isSelected ? (
-                      <XCircle className="w-8 h-8 text-rose-200 drop-shadow-lg" />
+                      <CheckCircle2 className="w-8 h-8 text-on-accent drop-shadow-lg" />
                     ) : null}
                   </div>
                 )}
-              </motion.button>
+              </motion.div>
             )
           })}
         </div>
@@ -231,10 +186,10 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+              className="p-6 rounded-3xl bg-accent-soft/60 border-2 border-indigo-500/40 text-center space-y-2"
             >
-              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
-                <Keyboard className="w-6 h-6 animate-pulse text-indigo-400" />
+              <div className="flex items-center justify-center gap-2 text-accent font-bold text-lg">
+                <Keyboard className="w-6 h-6 animate-pulse text-accent" />
                 <span>Escribe la palabra o término que falta en tu pantalla</span>
               </div>
             </motion.div>
@@ -242,13 +197,13 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
+              className="p-6 rounded-3xl bg-gradient-to-br from-success-soft/90 to-surface border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
             >
-              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1.5">
+              <div className="text-xs font-bold uppercase tracking-widest text-success flex items-center justify-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Respuesta(s) Correcta(s)</span>
               </div>
-              <div className="font-display font-black text-2xl sm:text-3xl text-white">
+              <div className="font-display font-black text-2xl sm:text-3xl text-foreground">
                 {Array.isArray(correctAnswer?.validAnswers)
                   ? correctAnswer.validAnswers.join('  •  ')
                   : correctAnswer?.text || correctAnswer?.validAnswer || 'Respuesta correcta'}
@@ -265,10 +220,10 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+              className="p-6 rounded-3xl bg-accent-soft/60 border-2 border-indigo-500/40 text-center space-y-2"
             >
-              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
-                <Type className="w-6 h-6 animate-pulse text-indigo-400" />
+              <div className="flex items-center justify-center gap-2 text-accent font-bold text-lg">
+                <Type className="w-6 h-6 animate-pulse text-accent" />
                 <span>Escribe la respuesta exacta en tu dispositivo</span>
               </div>
             </motion.div>
@@ -276,13 +231,13 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
+              className="p-6 rounded-3xl bg-gradient-to-br from-success-soft/90 to-surface border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
             >
-              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1.5">
+              <div className="text-xs font-bold uppercase tracking-widest text-success flex items-center justify-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Respuesta Correcta</span>
               </div>
-              <div className="font-display font-black text-2xl sm:text-3xl text-white">
+              <div className="font-display font-black text-2xl sm:text-3xl text-foreground">
                 {Array.isArray(correctAnswer?.validAnswers)
                   ? correctAnswer.validAnswers.join('  •  ')
                   : correctAnswer?.text || correctAnswer?.validAnswer || 'Respuesta'}
@@ -299,14 +254,14 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+              className="p-6 rounded-3xl bg-accent-soft/60 border-2 border-indigo-500/40 text-center space-y-2"
             >
-              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
-                <SlidersHorizontal className="w-6 h-6 animate-pulse text-indigo-400" />
+              <div className="flex items-center justify-center gap-2 text-accent font-bold text-lg">
+                <SlidersHorizontal className="w-6 h-6 animate-pulse text-accent" />
                 <span>Ajusta el valor en tu dispositivo</span>
               </div>
               {correctAnswer && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted">
                   Rango: {correctAnswer.min ?? 0} – {correctAnswer.max ?? 100}
                 </p>
               )}
@@ -315,13 +270,13 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
+              className="p-6 rounded-3xl bg-gradient-to-br from-success-soft/90 to-surface border-2 border-emerald-400 text-center space-y-3 shadow-2xl"
             >
-              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center gap-1.5">
+              <div className="text-xs font-bold uppercase tracking-widest text-success flex items-center justify-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Valor Correcto</span>
               </div>
-              <div className="font-display font-black text-5xl text-white">
+              <div className="font-display font-black text-5xl text-foreground">
                 {correctAnswer?.correctValue ?? correctAnswer?.value ?? '?'}
               </div>
             </motion.div>
@@ -332,11 +287,11 @@ export function QuestionDisplay({
       {/* Pin Drop */}
       {exercise.type === 'pin_drop' && (
         <div className="space-y-4">
-          <div className="relative rounded-2xl overflow-hidden border-2 border-slate-700">
+          <div className="relative rounded-2xl overflow-hidden border-2 border-line">
             {exercise.mediaUrl ? (
               <img src={exercise.mediaUrl} alt="Imagen" className="w-full h-auto" />
             ) : (
-              <div className="w-full h-64 bg-slate-800 flex items-center justify-center text-slate-500">
+              <div className="w-full h-64 bg-elevated flex items-center justify-center text-muted">
                 Imagen no disponible
               </div>
             )}
@@ -345,7 +300,7 @@ export function QuestionDisplay({
                 className="absolute w-6 h-6 -ml-3 -mt-6"
                 style={{ left: correctAnswer.correctX, top: correctAnswer.correctY }}
               >
-                <MapPin className="w-6 h-6 text-emerald-400 drop-shadow-lg" fill="currentColor" />
+                <MapPin className="w-6 h-6 text-success drop-shadow-lg" fill="currentColor" />
               </div>
             )}
           </div>
@@ -358,13 +313,13 @@ export function QuestionDisplay({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+            className="p-6 rounded-3xl bg-accent-soft/60 border-2 border-indigo-500/40 text-center space-y-2"
           >
-            <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
-              <MessageSquareQuote className="w-6 h-6 animate-pulse text-indigo-400" />
+            <div className="flex items-center justify-center gap-2 text-accent font-bold text-lg">
+              <MessageSquareQuote className="w-6 h-6 animate-pulse text-accent" />
               <span>Escribe una palabra o concepto clave</span>
             </div>
-            <p className="text-xs text-slate-400">Las palabras de todos se mostrarán como nube</p>
+            <p className="text-xs text-muted">Las palabras de todos se mostrarán como nube</p>
           </motion.div>
         </div>
       )}
@@ -373,7 +328,7 @@ export function QuestionDisplay({
       {exercise.type === 'order' && (
         <div className="space-y-4">
           <div className="text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center justify-center gap-1.5 mb-2">
               <ListOrdered className="w-4 h-4" />
               {showResult ? 'Orden Correcto de la Secuencia' : 'Elementos a Ordenar en tu Dispositivo'}
             </span>
@@ -403,15 +358,15 @@ export function QuestionDisplay({
                   transition={{ delay: index * 0.08 }}
                   className={`p-4 sm:p-5 rounded-2xl border-2 flex items-center gap-4 text-base sm:text-lg font-bold ${
                     showResult
-                      ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-100 shadow-lg'
-                      : 'bg-slate-900/80 border-slate-700/80 text-white'
+                      ? 'bg-success-soft/70 border-emerald-500/60 text-emerald-100 shadow-lg'
+                      : 'bg-surface/80 border-line/80 text-foreground'
                   }`}
                 >
                   <span
                     className={`w-9 h-9 rounded-xl flex items-center justify-center font-display font-black text-sm shrink-0 ${
                       showResult
                         ? 'bg-emerald-500 text-slate-950 shadow-md'
-                        : 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
+                        : 'bg-indigo-600/30 text-accent border border-indigo-500/40'
                     }`}
                   >
                     {showResult ? `${pos}º` : `${String.fromCharCode(65 + index)}`}
@@ -419,7 +374,7 @@ export function QuestionDisplay({
                   <span className="flex-1">
                     <MarkdownText content={item} />
                   </span>
-                  {showResult && <Check className="w-5 h-5 text-emerald-400 shrink-0" />}
+                  {showResult && <Check className="w-5 h-5 text-success shrink-0" />}
                 </motion.div>
               ))
             })()}
@@ -431,7 +386,7 @@ export function QuestionDisplay({
       {exercise.type === 'match' && (
         <div className="space-y-4">
           <div className="text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center justify-center gap-1.5 mb-2">
               <Link2 className="w-4 h-4" />
               {showResult ? 'Asociaciones y Pares Correctos' : 'Relaciona los Conceptos en tu Dispositivo'}
             </span>
@@ -452,22 +407,20 @@ export function QuestionDisplay({
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.1 }}
                   className={`p-4 rounded-2xl border-2 space-y-2 ${
-                    showResult
-                      ? 'bg-emerald-950/70 border-emerald-500/60'
-                      : 'bg-slate-900/80 border-slate-800'
+                    showResult ? 'bg-success-soft/70 border-emerald-500/60' : 'bg-surface/80 border-line'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <Badge variant="primary" className="text-[10px]">
                       Concepto {idx + 1}
                     </Badge>
-                    {showResult && <Check className="w-4 h-4 text-emerald-400" />}
+                    {showResult && <Check className="w-4 h-4 text-success" />}
                   </div>
-                  <div className="font-bold text-white text-base">
+                  <div className="font-bold text-foreground text-base">
                     <MarkdownText content={pair.left} />
                   </div>
-                  <div className="pt-2 border-t border-slate-800 text-xs text-indigo-200 flex items-center gap-2">
-                    <span className="font-bold text-indigo-400">→</span>
+                  <div className="pt-2 border-t border-line text-xs text-accent flex items-center gap-2">
+                    <span className="font-bold text-accent">→</span>
                     <MarkdownText content={pair.right} />
                   </div>
                 </motion.div>
@@ -484,10 +437,10 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-indigo-950/60 border-2 border-indigo-500/40 text-center space-y-2"
+              className="p-6 rounded-3xl bg-accent-soft/60 border-2 border-indigo-500/40 text-center space-y-2"
             >
-              <div className="flex items-center justify-center gap-2 text-indigo-300 font-bold text-lg">
-                <PenTool className="w-6 h-6 animate-pulse text-indigo-400" />
+              <div className="flex items-center justify-center gap-2 text-accent font-bold text-lg">
+                <PenTool className="w-6 h-6 animate-pulse text-accent" />
                 <span>Redacta tu respuesta en la pantalla de tu dispositivo</span>
               </div>
             </motion.div>
@@ -495,13 +448,13 @@ export function QuestionDisplay({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/90 to-slate-900 border-2 border-emerald-400 space-y-3 shadow-2xl"
+              className="p-6 rounded-3xl bg-gradient-to-br from-success-soft/90 to-surface border-2 border-emerald-400 space-y-3 shadow-2xl"
             >
-              <div className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+              <div className="text-xs font-bold uppercase tracking-widest text-success flex items-center gap-1.5">
                 <MessageSquareQuote className="w-4 h-4" />
                 <span>Respuesta Modelo / Criterio de Corrección</span>
               </div>
-              <div className="text-white text-sm sm:text-base leading-relaxed">
+              <div className="text-foreground text-sm sm:text-base leading-relaxed">
                 <MarkdownText
                   content={
                     correctAnswer?.sampleAnswer ||
@@ -520,17 +473,17 @@ export function QuestionDisplay({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-indigo-950/90 to-slate-900 border-2 border-indigo-400/40 text-center space-y-6 shadow-2xl"
+          className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-accent-soft/90 to-surface border-2 border-indigo-400/40 text-center space-y-6 shadow-2xl"
         >
-          <div className="text-xs font-bold uppercase tracking-widest text-indigo-400 flex items-center justify-center gap-1.5">
+          <div className="text-xs font-bold uppercase tracking-widest text-accent flex items-center justify-center gap-1.5">
             <Lightbulb className="w-4 h-4" />
             Información
           </div>
-          <div className="font-display font-bold text-xl sm:text-2xl text-white leading-relaxed">
+          <div className="font-display font-bold text-xl sm:text-2xl text-foreground leading-relaxed">
             <MarkdownText content={exercise.prompt} />
           </div>
           {exercise.mediaUrl && (
-            <div className="max-h-64 overflow-hidden rounded-2xl border border-slate-800 flex justify-center">
+            <div className="max-h-64 overflow-hidden rounded-2xl border border-line flex justify-center">
               <img src={exercise.mediaUrl} alt="Material" className="object-cover h-full" />
             </div>
           )}
@@ -542,10 +495,10 @@ export function QuestionDisplay({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-5 rounded-2xl bg-indigo-950/70 border border-indigo-500/40 text-indigo-200 text-sm sm:text-base leading-relaxed shadow-lg text-left"
+          className="p-5 rounded-2xl bg-accent-soft/70 border border-indigo-500/40 text-accent text-sm sm:text-base leading-relaxed shadow-lg text-left"
         >
-          <span className="font-bold text-white flex items-center gap-1.5 mb-1.5">
-            <Lightbulb className="w-4 h-4 text-amber-400" /> Explicación Pedagógica:
+          <span className="font-bold text-foreground flex items-center gap-1.5 mb-1.5">
+            <Lightbulb className="w-4 h-4 text-warning" /> Explicación Pedagógica:
           </span>
           <MarkdownText content={exercise.explanation} />
         </motion.div>

@@ -1,6 +1,6 @@
 node_modules/
 dist/
-data/
+/data/
 .env
 .env.local
 *.log
@@ -8,3 +8,7 @@ coverage/
 .DS_Store
 docs/
 .commandcode/
+
+/MANUAL_HISTORIA_E_IDENTIDAD_NACIONAL_lzC0knx.pdf
+/test-results/
+/playwright-report/

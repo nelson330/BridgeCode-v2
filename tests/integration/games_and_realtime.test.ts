@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
+import type { ServerWebSocket } from 'bun'
+import { runDatabaseSeed } from '../../scripts/seed'
 import { AuthService } from '../../src/apps/auth/service'
 import { GameRoom, RoomManager } from '../../src/apps/games/room'
 import { calculateScore, isAnswerCorrect } from '../../src/apps/games/scoring'
+import { GamesService } from '../../src/apps/games/service'
+import {
+  type WsSocketData,
+  getSocketUser,
+  handleWsClose,
+  handleWsMessage,
+} from '../../src/apps/games/ws-handler'
 import { loadConfig } from '../../src/core/config'
 import { getDb, initDb } from '../../src/core/db/client'
-import { courseClasses, exercises, lessons, liveSessions, users } from '../../src/core/db/schema'
+import { answers, courseClasses, exercises, lessons, liveSessions, users } from '../../src/core/db/schema'
 import { createHttpApp } from '../../src/core/http/app'
 
 describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
   beforeEach(() => {
-    loadConfig({ MODE: 'local' })
+    loadConfig({})
     initDb(':memory:')
   })
 
@@ -406,9 +415,11 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
 
     room.addHostSocket(hostSocket)
     expect(room.hostSockets.size).toBe(1)
-    expect(hostMessages[0].type).toBe('PARTICIPANT_LIST')
-    expect(hostMessages[1].type).toBe('ANSWER_STATS')
-    expect(hostMessages[1].totalParticipants).toBe(0)
+    expect(hostMessages[0].type).toBe('SESSION_STATE')
+    expect(hostMessages[0].phase).toBe('lobby')
+    expect(hostMessages[1].type).toBe('PARTICIPANT_LIST')
+    expect(hostMessages[2].type).toBe('ANSWER_STATS')
+    expect(hostMessages[2].totalParticipants).toBe(0)
 
     // 2. Student 1 joins before game starts
     const student1Messages: any[] = []
@@ -462,5 +473,87 @@ describe('GameRoom Realtime, 4 Mechanics & Anti-cheat (Fase 4)', () => {
 
     // Cleanup
     RoomManager.deleteRoom('ses_sync_test')
+  })
+
+  it('protects host sockets and removes the actual observer on disconnect', async () => {
+    await runDatabaseSeed()
+    const session = await GamesService.createSession('usr_docente_01', {
+      classId: 'cls_historia_identidad',
+      lessonId: 'lsn_identidad_unidad_1',
+      mode: 'trivia',
+    })
+    const room = RoomManager.getRoomById(session.sessionId)!
+    const messages: any[] = []
+    const socket = {
+      data: {} as WsSocketData,
+      send: (text: string) => messages.push(JSON.parse(text)),
+      close: () => {},
+    } as unknown as ServerWebSocket<WsSocketData>
+    await handleWsMessage(socket, JSON.stringify({ type: 'HOST_JOIN', sessionId: session.sessionId }))
+    expect(messages.at(-1).type).toBe('ERROR')
+    expect(room.hostSockets.size).toBe(0)
+    socket.data.authenticatedUserId = 'usr_docente_01'
+    await handleWsMessage(socket, JSON.stringify({ type: 'HOST_JOIN', sessionId: session.sessionId }))
+    expect(room.hostSockets.size).toBe(1)
+    handleWsClose(socket)
+    expect(room.hostSockets.size).toBe(0)
+    expect(getSocketUser(new Request('http://localhost/api/ws/game'))).toBeUndefined()
+    await expect(GamesService.revealExercise('another-teacher', session.sessionId)).rejects.toThrow(
+      'sin permisos'
+    )
+    RoomManager.deleteRoom(session.sessionId)
+  })
+
+  it('manual reveal closes answering once and rejects late answers', async () => {
+    await runDatabaseSeed()
+    const session = await GamesService.createSession('usr_docente_01', {
+      classId: 'cls_historia_identidad',
+      lessonId: 'lsn_identidad_unidad_1',
+      mode: 'trivia',
+    })
+    const room = RoomManager.getRoomById(session.sessionId)!
+    const messages: any[] = []
+    const participant = room.addParticipant(
+      { send: (text) => messages.push(JSON.parse(text)), close: () => {} },
+      'Jugador'
+    )
+    room.startGame(true)
+    await GamesService.revealExercise('usr_docente_01', session.sessionId)
+    await GamesService.revealExercise('usr_docente_01', session.sessionId)
+    expect(messages.filter((message) => message.type === 'EXERCISE_RESULT')).toHaveLength(1)
+    await room.submitAnswer(participant, '{"correctIndex":0}', 2000)
+    expect(room.participants.get(participant)!.score).toBe(0)
+    expect(getDb().select().from(answers).all()).toHaveLength(0)
+    RoomManager.deleteRoom(session.sessionId)
+  })
+
+  it('a failed answer or finish write cannot publish successful scores or results', async () => {
+    const { sqlite } = initDb(':memory:')
+    await runDatabaseSeed()
+    const session = await GamesService.createSession('usr_docente_01', {
+      classId: 'cls_historia_identidad',
+      lessonId: 'lsn_identidad_unidad_1',
+      mode: 'trivia',
+    })
+    const room = RoomManager.getRoomById(session.sessionId)!
+    const messages: any[] = []
+    const participant = room.addParticipant(
+      { send: (text) => messages.push(JSON.parse(text)), close: () => {} },
+      'Jugador'
+    )
+    room.startGame(true)
+    sqlite.exec(
+      "CREATE TRIGGER reject_answer BEFORE INSERT ON answers BEGIN SELECT RAISE(ABORT, 'write failed'); END"
+    )
+    await expect(room.submitAnswer(participant, '{"correctIndex":0}', 2000)).rejects.toThrow('write failed')
+    expect(room.participants.get(participant)!.hasAnswered).toBe(false)
+    expect(room.participants.get(participant)!.score).toBe(0)
+    sqlite.exec(
+      "CREATE TRIGGER reject_finish BEFORE UPDATE ON live_sessions BEGIN SELECT RAISE(ABORT, 'finish failed'); END"
+    )
+    await expect(room.finishGame()).rejects.toThrow('finish failed')
+    expect(room.status).toBe('active')
+    expect(messages.filter((message) => message.type === 'GAME_FINISHED')).toHaveLength(0)
+    RoomManager.deleteRoom(session.sessionId)
   })
 })

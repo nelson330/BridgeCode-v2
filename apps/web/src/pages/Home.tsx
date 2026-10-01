@@ -1,119 +1,99 @@
-import {
-  ArrowRight,
-  BrainCircuit,
-  CheckCircle2,
-  Flame,
-  Gamepad2,
-  Layers,
-  Shield,
-  Sparkles,
-  Tv,
-  Users,
-} from 'lucide-react'
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
-import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { useAuth } from '../context/AuthContext'
+import { ArrowRight, BookOpen, Gamepad2, Sparkles, Tv, Users } from '../lib/icons'
 
 export function Home() {
-  const { user, isLocalMode } = useAuth()
-
+  const { user } = useAuth()
+  const panel = user?.role === 'student' ? '/student' : user ? '/dashboard' : '/login'
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-6xl mx-auto w-full space-y-12">
-      {/* Hero Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-8 sm:py-14 space-y-8">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950/80 via-slate-900/90 to-purple-950/80 border-2 border-indigo-500/30 p-6 sm:p-14 text-center space-y-6 shadow-2xl backdrop-blur-xl w-full"
+        className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-hero to-surface p-6 sm:p-12 lg:p-16 shadow-xl"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-xs font-extrabold uppercase tracking-wider">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
-          {isLocalMode ? 'Modo Local Autónomo • Proyección' : 'Modo Servidor • Multidispositivo'}
-        </div>
-
-        <h1 className="font-display font-black text-4xl sm:text-6xl text-white tracking-tight leading-tight max-w-4xl mx-auto">
-          Gamificación Educativa, Mecánicas en Vivo y{' '}
-          <span className="bg-gradient-to-r from-violet-400 via-indigo-300 to-fuchsia-400 bg-clip-text text-transparent">
-            Motor de IA
-          </span>
-        </h1>
-
-        <p className="text-slate-300 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed">
-          {isLocalMode
-            ? 'Proyecta trivias, ruletas y desafíos directamente en la pizarra de tu aula sin necesidad de internet ni teléfonos.'
-            : 'Conecta a tus alumnos en tiempo real con código PIN para competencias arcade, muros sociales y tareas interactivas.'}
-        </p>
-
-        {/* Primary Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-          {isLocalMode ? (
-            <Link to="/dashboard">
-              <Button variant="primary" size="xl" className="gap-3">
-                <Tv className="w-6 h-6" />
-                <span>Entrar al Panel Docente</span>
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-          ) : (
-            <>
-              <Link to="/join">
-                <Button
-                  variant="game"
-                  size="xl"
-                  className="gap-3 bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500"
-                >
-                  <Gamepad2 className="w-6 h-6" />
-                  <span>Unirse a Partida con PIN</span>
-                </Button>
+        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 items-center">
+          <div className="space-y-6">
+            <span className="inline-flex gap-2 items-center rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-accent">
+              <Sparkles className="w-4 h-4" />
+              Aprende, participa, celebra
+            </span>
+            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black text-foreground leading-tight tracking-tight">
+              Cada clase, una nueva <span className="text-accent">aventura.</span>
+            </h1>
+            <p className="text-secondary text-base sm:text-lg max-w-xl leading-relaxed">
+              Proyecta una lección a tu ritmo o conecta a tus estudiantes en un juego en vivo. Todo tu grupo,
+              en un mismo lugar.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                to={panel}
+                className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-indigo-600 text-on-accent px-5 py-3 font-semibold shadow-lg shadow-indigo-500/20"
+              >
+                <Tv className="w-5 h-5" />
+                {user ? 'Ir a mi panel' : 'Acceso docente'}
+                <ArrowRight className="w-4 h-4" />
               </Link>
-
-              <Link to={user ? '/dashboard' : '/login'}>
-                <Button variant="secondary" size="xl" className="gap-2">
-                  <Tv className="w-5 h-5 text-indigo-400" />
-                  <span>{user ? 'Mi Panel Docente' : 'Acceso Docente'}</span>
-                </Button>
+              <Link
+                to="/join"
+                className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl border border-line bg-surface text-foreground px-5 py-3 font-semibold"
+              >
+                <Gamepad2 className="w-5 h-5 text-accent" />
+                Unirse con PIN
               </Link>
-            </>
-          )}
+            </div>
+          </div>
+          <Card className="space-y-5 p-6 sm:p-8 bg-surface/90">
+            <div className="flex items-center gap-3 text-accent">
+              <BookOpen className="w-7 h-7" />
+              <span className="text-sm font-bold uppercase tracking-wider">Lista para descubrir</span>
+            </div>
+            <h2 className="font-display text-2xl font-bold text-foreground">Historia e Identidad Nacional</h2>
+            <p className="text-secondary text-sm leading-relaxed">
+              Una primera experiencia basada en el manual de INATEC. Las cuentas y actividades de demostración
+              se crean automáticamente.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-line pt-5">
+              {[
+                ['8', 'estudiantes'],
+                ['3', 'lecciones'],
+                ['18', 'ejercicios'],
+              ].map(([value, label]) => (
+                <div key={label} className="flex flex-wrap items-baseline gap-3 sm:block">
+                  <p className="text-2xl font-black text-accent">{value}</p>
+                  <p className="text-xs text-muted">{label}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
-      </motion.div>
-
-      {/* Feature Highlights Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-        <Card hoverEffect className="space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
-            <Gamepad2 className="w-6 h-6" />
-          </div>
-          <h3 className="font-display font-bold text-xl text-white">4 Mecánicas en Vivo</h3>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Ruleta de turnos con física realista, Trivia rápida con decaimiento de velocidad, Batalla por
-            equipos y Carrera contrarreloj.
-          </p>
-        </Card>
-
-        <Card hoverEffect className="space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-            <BrainCircuit className="w-6 h-6" />
-          </div>
-          <h3 className="font-display font-bold text-xl text-white">IA Multi-Proveedor</h3>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Genera 8 tipos de ejercicios desde cualquier material con Groq, OpenAI, Gemini, DeepSeek o NVIDIA
-            NIM con cifrado de llaves AES-256.
-          </p>
-        </Card>
-
-        <Card hoverEffect className="space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-            <Flame className="w-6 h-6" />
-          </div>
-          <h3 className="font-display font-bold text-xl text-white">Efectos & Sonido Arcade</h3>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Sintetizador WebAudio procedural zero-asset, contador odometer, racha de fuego, confeti y modo de
-            accesibilidad daltónica.
-          </p>
-        </Card>
+      </motion.section>
+      <div className="grid md:grid-cols-3 gap-5">
+        {[
+          {
+            icon: Tv,
+            title: 'Presenta a tu ritmo',
+            text: 'Preguntas legibles, respuestas que revelas cuando quieras y pantalla completa para el aula.',
+          },
+          {
+            icon: Gamepad2,
+            title: 'Juega en tiempo real',
+            text: 'Comparte el PIN o QR. Tus estudiantes responden y celebran sus avances desde sus dispositivos.',
+          },
+          {
+            icon: Users,
+            title: 'Acompaña a tu grupo',
+            text: 'Lecciones, tareas, conversación y progreso en una experiencia conectada.',
+          },
+        ].map(({ icon: Icon, title, text }) => (
+          <Card key={title} className="space-y-3 p-6">
+            <Icon className="w-6 h-6 text-accent" />
+            <h2 className="font-display text-xl font-bold text-foreground">{title}</h2>
+            <p className="text-sm text-secondary leading-relaxed">{text}</p>
+          </Card>
+        ))}
       </div>
     </div>
   )

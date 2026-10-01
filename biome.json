@@ -40,6 +40,16 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", "dist", "data", "migrations", ".keys", ".commandcode"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      "data",
+      "migrations",
+      ".keys",
+      ".commandcode",
+      "test-results",
+      "playwright-report",
+      "coverage"
+    ]
   }
 }

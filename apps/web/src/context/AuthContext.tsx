@@ -2,6 +2,7 @@ import type { AuthUser, LoginResponse } from '@shared/contracts/auth'
 import type { ConfigResponse } from '@shared/contracts/common'
 import { type ReactNode, createContext, useContext, useEffect, useState } from 'react'
 import { apiFetch } from '../lib/api'
+import { notify } from '../lib/feedback'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -10,8 +11,6 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
   refreshMe: () => Promise<void>
-  isLocalMode: boolean
-  isHostedMode: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -28,8 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const meData = await apiFetch<{ user: AuthUser }>('/api/auth/me')
       setUser(meData.user)
-    } catch {
-      setUser(null)
+    } catch (error) {
+      if ((error as { status?: number }).status === 401) setUser(null)
+      else notify(error instanceof Error ? error.message : 'No se pudo conectar con el servidor')
     } finally {
       setIsLoading(false)
     }
@@ -49,16 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    try {
-      await apiFetch('/api/auth/logout', { method: 'POST' })
-    } catch {
-      // ignore
-    }
+    await apiFetch('/api/auth/logout', { method: 'POST' })
     setUser(null)
   }
-
-  const isLocalMode = config?.mode === 'local'
-  const isHostedMode = config?.mode === 'hosted'
 
   return (
     <AuthContext.Provider
@@ -69,8 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshMe,
-        isLocalMode,
-        isHostedMode,
       }}
     >
       {children}

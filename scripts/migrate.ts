@@ -2,7 +2,7 @@ import { getRawDb } from '../src/core/db/client'
 import { logger } from '../src/core/logger'
 
 export async function runMigrations() {
-  logger.info('📦 Running database migrations...')
+  logger.info('Running database migrations...')
   const sqlite = getRawDb()
 
   sqlite.exec(`
@@ -296,7 +296,7 @@ export async function runMigrations() {
     // Column already exists
   }
 
-  logger.info('✅ Database migrations applied successfully.')
+  logger.info('Database migrations applied successfully.')
 }
 
 if (import.meta.main) {

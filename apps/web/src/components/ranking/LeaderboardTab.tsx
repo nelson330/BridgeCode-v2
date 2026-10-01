@@ -1,4 +1,7 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { apiFetch } from '../../lib/api'
 import {
   Award,
   CheckCircle2,
@@ -10,10 +13,7 @@ import {
   Trophy,
   Users,
   Zap,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { apiFetch } from '../../lib/api'
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { CustomSelect } from '../ui/Select'
@@ -61,18 +61,16 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
       {/* Header & Filter */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-display font-black text-2xl text-white flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-amber-400" />
+          <h3 className="font-display font-black text-2xl text-foreground flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-warning" />
             <span>{t('ranking.title')}</span>
           </h3>
-          <p className="text-xs text-slate-400">{t('ranking.subtitle')}</p>
+          <p className="text-xs text-muted">{t('ranking.subtitle')}</p>
         </div>
 
         {classes.length > 0 && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">
-              Filtrar:
-            </span>
+            <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0">Filtrar:</span>
             <div className="w-full sm:w-52 max-w-full">
               <CustomSelect
                 value={selectedClassId}
@@ -99,17 +97,17 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-slate-800/80 to-slate-900/90 border border-slate-700/80 text-center space-y-3 relative shadow-xl"
+              className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-elevated/80 to-surface/90 border border-line/80 text-center space-y-3 relative shadow-xl"
             >
-              <div className="w-12 h-12 rounded-2xl bg-slate-700 border border-slate-500 flex items-center justify-center mx-auto text-slate-200">
-                <Medal className="w-6 h-6 text-slate-200" />
+              <div className="w-12 h-12 rounded-2xl bg-selected border border-slate-500 flex items-center justify-center mx-auto text-foreground">
+                <Medal className="w-6 h-6 text-foreground" />
               </div>
               <div>
-                <h4 className="font-display font-bold text-lg text-white">{top3[1].displayName}</h4>
-                <span className="text-xs text-slate-400 font-mono">@{top3[1].username}</span>
+                <h4 className="font-display font-bold text-lg text-foreground">{top3[1].displayName}</h4>
+                <span className="text-xs text-muted font-mono">@{top3[1].username}</span>
               </div>
-              <div className="font-display font-black text-2xl text-slate-300">
-                {top3[1].totalPoints} <span className="text-xs text-slate-500">pts</span>
+              <div className="font-display font-black text-2xl text-secondary">
+                {top3[1].totalPoints} <span className="text-xs text-muted">pts</span>
               </div>
               <Badge variant="primary" className="text-[10px]">
                 Nivel {top3[1].level} • {top3[1].accuracy}% Aciertos
@@ -122,7 +120,7 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-amber-950/40 via-slate-900/90 to-slate-900 border-2 border-amber-400/60 text-center space-y-4 relative shadow-2xl shadow-amber-500/10 md:-translate-y-4"
+              className="p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-warning-soft/40 via-surface/90 to-surface border-2 border-amber-400/60 text-center space-y-4 relative shadow-2xl shadow-amber-500/10 md:-translate-y-4"
             >
               <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-xs font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg flex items-center gap-1">
                 <Crown className="w-3.5 h-3.5 fill-current" />
@@ -133,11 +131,11 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
                 <Crown className="w-8 h-8 fill-slate-950 text-slate-950" />
               </div>
               <div>
-                <h3 className="font-display font-black text-2xl text-white">{top3[0].displayName}</h3>
-                <span className="text-xs text-amber-300 font-mono">@{top3[0].username}</span>
+                <h3 className="font-display font-black text-2xl text-foreground">{top3[0].displayName}</h3>
+                <span className="text-xs text-warning font-mono">@{top3[0].username}</span>
               </div>
-              <div className="font-display font-black text-4xl text-amber-400">
-                {top3[0].totalPoints} <span className="text-sm text-slate-400">pts</span>
+              <div className="font-display font-black text-4xl text-warning">
+                {top3[0].totalPoints} <span className="text-sm text-muted">pts</span>
               </div>
               <Badge variant="warning" className="text-xs font-bold">
                 Nivel {top3[0].level} • {top3[0].accuracy}% Aciertos
@@ -151,17 +149,17 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-amber-950/20 to-slate-900/90 border border-amber-900/60 text-center space-y-3 relative shadow-xl"
+              className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-warning-soft/20 to-surface/90 border border-amber-900/60 text-center space-y-3 relative shadow-xl"
             >
-              <div className="w-12 h-12 rounded-2xl bg-amber-950 border border-amber-700 flex items-center justify-center mx-auto text-amber-500">
+              <div className="w-12 h-12 rounded-2xl bg-warning-soft border border-amber-700 flex items-center justify-center mx-auto text-amber-500">
                 <Medal className="w-6 h-6 text-amber-500" />
               </div>
               <div>
-                <h4 className="font-display font-bold text-lg text-white">{top3[2].displayName}</h4>
-                <span className="text-xs text-slate-400 font-mono">@{top3[2].username}</span>
+                <h4 className="font-display font-bold text-lg text-foreground">{top3[2].displayName}</h4>
+                <span className="text-xs text-muted font-mono">@{top3[2].username}</span>
               </div>
               <div className="font-display font-black text-2xl text-amber-600">
-                {top3[2].totalPoints} <span className="text-xs text-slate-500">pts</span>
+                {top3[2].totalPoints} <span className="text-xs text-muted">pts</span>
               </div>
               <Badge variant="primary" className="text-[10px]">
                 Nivel {top3[2].level} • {top3[2].accuracy}% Aciertos
@@ -171,49 +169,49 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
         </div>
       )}
       {/* Full Leaderboard Table */}
-      <div className="rounded-3xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="rounded-3xl bg-surface/90 border border-line overflow-hidden shadow-xl">
+        <div className="p-4 border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <Trophy className="w-4 h-4 text-warning" />
+            <span className="text-xs font-bold text-muted uppercase tracking-wider">
               {t('ranking.tableStudent')}
             </span>
           </div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <span className="text-xs font-bold text-muted uppercase tracking-wider">
             {t('ranking.tablePoints')}
           </span>
         </div>
 
         {leaderboard.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">{t('ranking.empty')}</div>
+          <div className="p-12 text-center text-muted text-sm">{t('ranking.empty')}</div>
         ) : (
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y divide-line/60">
             {leaderboard.map((user, idx) => {
               const rank = idx + 1
               return (
                 <div
                   key={user.userId}
                   className={`p-4 flex items-center justify-between transition-colors ${
-                    rank <= 3 ? 'bg-slate-800/30' : 'hover:bg-slate-800/20'
+                    rank <= 3 ? 'bg-elevated/30' : 'hover:bg-elevated/20'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
                         rank === 1
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40'
+                          ? 'bg-amber-500/20 text-warning border border-amber-400/40'
                           : rank === 2
-                            ? 'bg-slate-700 text-slate-200'
+                            ? 'bg-selected text-foreground'
                             : rank === 3
                               ? 'bg-amber-900/40 text-amber-500'
-                              : 'bg-slate-800 text-slate-500'
+                              : 'bg-elevated text-muted'
                       }`}
                     >
                       {rank}
                     </span>
                     <div>
-                      <span className="font-bold text-sm text-white block">{user.displayName}</span>
-                      <span className="text-[11px] text-slate-400 font-mono">@{user.username}</span>
+                      <span className="font-bold text-sm text-foreground block">{user.displayName}</span>
+                      <span className="text-[11px] text-muted font-mono">@{user.username}</span>
                     </div>
                   </div>
 
@@ -223,20 +221,20 @@ export function LeaderboardTab({ currentClassId, classes = [] }: LeaderboardTabP
                       {user.badges.map((b) => (
                         <span
                           key={b}
-                          className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-semibold inline-flex items-center gap-1"
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-accent border border-indigo-500/30 font-semibold inline-flex items-center gap-1"
                           title={b}
                         >
-                          <Award className="w-3 h-3 text-amber-400" />
+                          <Award className="w-3 h-3 text-warning" />
                           <span>{b}</span>
                         </span>
                       ))}
                     </div>
 
                     <div className="text-right">
-                      <span className="font-display font-extrabold text-base text-amber-400 block">
+                      <span className="font-display font-extrabold text-base text-warning block">
                         {user.totalPoints} pts
                       </span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-muted">
                         Nivel {user.level} • {user.accuracy}%
                       </span>
                     </div>

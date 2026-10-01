@@ -1,6 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { Check, ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Check, ChevronDown } from '../../lib/icons'
 import { cn } from './Button'
 
 export interface SelectOption<T extends string | number = string> {
@@ -11,6 +11,8 @@ export interface SelectOption<T extends string | number = string> {
 
 export interface CustomSelectProps<T extends string | number = string> {
   value: T
+  id?: string
+  'aria-label'?: string
   onChange: (value: T) => void
   options: SelectOption<T>[]
   placeholder?: string
@@ -23,6 +25,8 @@ export interface CustomSelectProps<T extends string | number = string> {
 
 export function CustomSelect<T extends string | number = string>({
   value,
+  id,
+  'aria-label': ariaLabel,
   onChange,
   options,
   placeholder = 'Seleccionar...',
@@ -40,9 +44,11 @@ export function CustomSelect<T extends string | number = string>({
         <DropdownMenu.Trigger asChild disabled={disabled}>
           <button
             type="button"
+            id={id}
+            aria-label={ariaLabel}
             className={cn(
               'w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border font-semibold text-xs sm:text-sm shadow-sm transition-all cursor-pointer select-none text-left touch-manipulation focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed',
-              'bg-slate-900 border-slate-800 text-white hover:border-slate-700',
+              'bg-surface border-line text-foreground hover:border-line',
               triggerClassName
             )}
           >
@@ -50,7 +56,7 @@ export function CustomSelect<T extends string | number = string>({
               {selectedOption?.icon}
               <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
             </span>
-            <ChevronDown className="w-4 h-4 text-indigo-400 shrink-0 transition-transform duration-200" />
+            <ChevronDown className="w-4 h-4 text-accent shrink-0 transition-transform duration-200" />
           </button>
         </DropdownMenu.Trigger>
 
@@ -60,8 +66,8 @@ export function CustomSelect<T extends string | number = string>({
             align={align}
             sideOffset={6}
             className={cn(
-              'z-50 min-w-[180px] max-h-64 overflow-y-auto p-1.5 rounded-2xl border shadow-2xl space-y-1 focus:outline-none',
-              'bg-slate-900 border-slate-800 text-slate-200',
+              'z-50 min-w-[180px] max-w-[calc(100vw-2rem)] max-h-[min(16rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto p-1.5 rounded-2xl border shadow-2xl space-y-1 focus:outline-none',
+              'bg-surface border-line text-foreground',
               contentClassName
             )}
           >
@@ -72,17 +78,17 @@ export function CustomSelect<T extends string | number = string>({
                   key={String(opt.value)}
                   onSelect={() => onChange(opt.value)}
                   className={cn(
-                    'flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-colors outline-none select-none',
+                    'flex min-h-[44px] items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium cursor-pointer transition-colors outline-none select-none',
                     isSelected
-                      ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-indigo-600 text-on-accent font-bold shadow-md shadow-indigo-600/30'
+                      : 'text-secondary hover:bg-elevated hover:text-foreground'
                   )}
                 >
                   <span className="flex items-center gap-2 truncate">
                     {opt.icon}
                     <span className="truncate">{opt.label}</span>
                   </span>
-                  {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
+                  {isSelected && <Check className="w-4 h-4 text-on-accent shrink-0" />}
                 </DropdownMenu.Item>
               )
             })}

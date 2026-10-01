@@ -25,7 +25,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-indigo-400 hover:text-indigo-300 underline font-medium inline-flex items-center gap-0.5"
+          className="text-accent hover:text-accent underline font-medium inline-flex items-center gap-0.5"
         >
           {linkMatch[1]}
         </a>
@@ -36,7 +36,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
       const inner = part.slice(2, -2)
       return (
-        <strong key={idx} className="font-bold text-white tracking-wide">
+        <strong key={idx} className="font-bold tracking-wide">
           {parseInlineMarkdown(inner)}
         </strong>
       )
@@ -48,7 +48,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
       return (
         <code
           key={idx}
-          className="px-1.5 py-0.5 mx-0.5 rounded-md bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 font-mono text-[0.9em] font-semibold"
+          className="px-1.5 py-0.5 mx-0.5 rounded-md bg-accent-soft/80 border border-indigo-500/40 text-accent font-mono text-[0.9em] font-semibold"
         >
           {code}
         </code>
@@ -59,7 +59,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) {
       const inner = part.slice(1, -1)
       return (
-        <em key={idx} className="italic text-indigo-100">
+        <em key={idx} className="italic">
           {parseInlineMarkdown(inner)}
         </em>
       )
@@ -69,7 +69,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     if (part.startsWith('~~') && part.endsWith('~~')) {
       const inner = part.slice(2, -2)
       return (
-        <del key={idx} className="line-through text-slate-400">
+        <del key={idx} className="line-through text-muted">
           {parseInlineMarkdown(inner)}
         </del>
       )
@@ -98,7 +98,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
         blocks.push(
           <pre
             key={`code-${lineIdx}`}
-            className="my-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs overflow-x-auto text-left"
+            className="my-2 p-3 rounded-xl bg-canvas border border-line text-accent font-mono text-xs overflow-x-auto text-left"
           >
             <code>{codeBlockBuffer.join('\n')}</code>
           </pre>
@@ -127,7 +127,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     // Heading 1: #
     if (trimmed.startsWith('# ')) {
       blocks.push(
-        <h3 key={`h1-${lineIdx}`} className="text-xl sm:text-2xl font-black text-white my-1">
+        <h3 key={`h1-${lineIdx}`} className="text-xl sm:text-2xl font-black text-foreground my-1">
           {parseInlineMarkdown(trimmed.slice(2))}
         </h3>
       )
@@ -137,7 +137,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     // Heading 2: ##
     if (trimmed.startsWith('## ')) {
       blocks.push(
-        <h4 key={`h2-${lineIdx}`} className="text-lg sm:text-xl font-extrabold text-white my-1">
+        <h4 key={`h2-${lineIdx}`} className="text-lg sm:text-xl font-extrabold text-foreground my-1">
           {parseInlineMarkdown(trimmed.slice(3))}
         </h4>
       )
@@ -147,7 +147,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     // Heading 3: ###
     if (trimmed.startsWith('### ')) {
       blocks.push(
-        <h5 key={`h3-${lineIdx}`} className="text-base sm:text-lg font-bold text-white my-0.5">
+        <h5 key={`h3-${lineIdx}`} className="text-base sm:text-lg font-bold text-foreground my-0.5">
           {parseInlineMarkdown(trimmed.slice(4))}
         </h5>
       )
@@ -159,7 +159,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
       blocks.push(
         <blockquote
           key={`quote-${lineIdx}`}
-          className="my-1.5 pl-3 border-l-2 border-indigo-400 text-slate-300 italic text-sm"
+          className="my-1.5 pl-3 border-l-2 border-indigo-400 text-secondary italic text-sm"
         >
           {parseInlineMarkdown(trimmed.slice(2))}
         </blockquote>
@@ -171,7 +171,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       blocks.push(
         <div key={`li-${lineIdx}`} className="flex items-start gap-2 my-0.5 text-left">
-          <span className="text-indigo-400 font-black">•</span>
+          <span className="text-accent font-black">•</span>
           <span className="flex-1">{parseInlineMarkdown(trimmed.slice(2))}</span>
         </div>
       )
@@ -183,7 +183,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     if (numMatch) {
       blocks.push(
         <div key={`nli-${lineIdx}`} className="flex items-start gap-2 my-0.5 text-left">
-          <span className="text-indigo-400 font-bold text-xs">{numMatch[1]}.</span>
+          <span className="text-accent font-bold text-xs">{numMatch[1]}.</span>
           <span className="flex-1">{parseInlineMarkdown(numMatch[2] || '')}</span>
         </div>
       )
@@ -203,7 +203,7 @@ export function MarkdownText({ content, className = '' }: MarkdownTextProps) {
     blocks.push(
       <pre
         key="code-end"
-        className="my-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs overflow-x-auto text-left"
+        className="my-2 p-3 rounded-xl bg-canvas border border-line text-accent font-mono text-xs overflow-x-auto text-left"
       >
         <code>{codeBlockBuffer.join('\n')}</code>
       </pre>

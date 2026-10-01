@@ -35,7 +35,7 @@ export class AuthService {
       throw new AppError('Usuario o contraseña incorrectos', ErrorCodes.AUTH_INVALID_CREDENTIALS, 401)
     }
 
-    const { user, teacherProfile } = found[0]
+    const { user } = found[0]
 
     const isValid = await verifyPassword(cleanPassword, user.passwordHash)
     if (!isValid) {
@@ -75,7 +75,6 @@ export class AuthService {
       role: user.role as any,
       status: user.status as any,
       mustChangePassword: user.mustChangePassword,
-      adminLocal: teacherProfile?.adminLocal || false,
     }
   }
 
@@ -149,7 +148,6 @@ export class AuthService {
       userId,
       bio: bioText,
       locale: 'es',
-      adminLocal: false,
     })
 
     await db.insert(auditLogs).values({

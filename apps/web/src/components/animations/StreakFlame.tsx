@@ -1,5 +1,5 @@
-import { Flame } from 'lucide-react'
 import { motion } from 'motion/react'
+import { Flame } from '../../lib/icons'
 
 interface StreakFlameProps {
   streak: number
@@ -16,7 +16,7 @@ export function StreakFlame({ streak, className = '' }: StreakFlameProps) {
   const flameColor = isSuperStreak
     ? 'text-fuchsia-400 drop-shadow-[0_0_12px_rgba(217,70,239,0.8)]'
     : isHighStreak
-      ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]'
+      ? 'text-warning drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]'
       : 'text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]'
 
   const multiplier = (1 + Math.min(streak, 5) * 0.2).toFixed(1)
@@ -26,7 +26,7 @@ export function StreakFlame({ streak, className = '' }: StreakFlameProps) {
       initial={{ scale: 0, rotate: -20 }}
       animate={{ scale: 1, rotate: 0 }}
       exit={{ scale: 0, opacity: 0 }}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-lg ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface/90 border border-line/80 shadow-lg ${className}`}
     >
       <motion.div
         animate={{
@@ -42,7 +42,7 @@ export function StreakFlame({ streak, className = '' }: StreakFlameProps) {
       >
         <Flame className="w-5 h-5 fill-current" />
       </motion.div>
-      <span className="font-display font-extrabold text-xs tracking-wider text-white">
+      <span className="font-display font-extrabold text-xs tracking-wider text-foreground">
         ×{multiplier} ({streak})
       </span>
     </motion.div>

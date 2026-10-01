@@ -1,7 +1,7 @@
-import { Sparkles, Trophy } from 'lucide-react'
-import { motion, useAnimation } from 'motion/react'
+import { motion, useAnimation, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { sound } from '../../lib/audio-synth'
+import { Sparkles, Trophy } from '../../lib/icons'
 import { Button } from '../ui/Button'
 
 interface RouletteWheelProps {
@@ -25,6 +25,7 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
   const [isSpinning, setIsSpinning] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const controls = useAnimation()
+  const reducedMotion = useReducedMotion()
   const currentRotation = useRef(0)
 
   const segments = items.length > 0 ? items : ['1', '2', '3', '4', '5', '6', '7', '8']
@@ -54,7 +55,7 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
     await controls.start({
       rotate: totalRotation,
       transition: {
-        duration: 4.5,
+        duration: reducedMotion ? 0 : 4.5,
         ease: [0.15, 0.9, 0.25, 1], // Realistic deceleration
       },
     })
@@ -72,8 +73,8 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 select-none">
-      <div className="relative w-80 h-80 sm:w-96 sm:h-96 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-6 select-none w-full max-w-md mx-auto">
+      <div className="relative w-full max-w-96 aspect-square flex items-center justify-center">
         {/* Top Pointer Needle */}
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-8 h-10 flex flex-col items-center">
           <div className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[22px] border-t-amber-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]" />
@@ -85,7 +86,7 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
         {/* Rotating Wheel Canvas/SVG */}
         <motion.div
           animate={controls}
-          className="w-full h-full rounded-full overflow-hidden shadow-2xl border-4 border-slate-900 relative"
+          className="w-full h-full rounded-full overflow-hidden shadow-2xl border-4 border-line relative"
           style={{ originX: 0.5, originY: 0.5 }}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
@@ -127,8 +128,8 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
           </svg>
 
           {/* Wheel Center Hub */}
-          <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-slate-900 border-4 border-amber-400 shadow-xl flex items-center justify-center z-10">
-            <Sparkles className="w-6 h-6 text-amber-400" />
+          <div className="absolute inset-0 m-auto w-14 h-14 rounded-full bg-surface border-4 border-amber-400 shadow-xl flex items-center justify-center z-10">
+            <Sparkles className="w-6 h-6 text-warning" />
           </div>
         </motion.div>
       </div>
@@ -138,9 +139,9 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
         <motion.div
           initial={{ scale: 0, y: 10 }}
           animate={{ scale: 1, y: 0 }}
-          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-400 text-amber-300 font-display font-black text-xl shadow-xl shadow-amber-500/20"
+          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-2 border-amber-400 text-warning font-display font-black text-xl shadow-xl shadow-amber-500/20"
         >
-          <Trophy className="w-6 h-6 text-amber-400" />
+          <Trophy className="w-6 h-6 text-warning" />
           <span>¡Seleccionado: {segments[selectedIndex]}!</span>
         </motion.div>
       )}
@@ -151,7 +152,7 @@ export function RouletteWheel({ items, onSelect, disabled = false }: RouletteWhe
         size="lg"
         onClick={spin}
         disabled={isSpinning || disabled}
-        className="w-48 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-xl shadow-amber-500/30"
+        className="w-48 bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-800 hover:to-orange-800 text-on-accent shadow-xl shadow-amber-500/30"
       >
         {isSpinning ? 'Girando...' : '¡Girar Ruleta!'}
       </Button>

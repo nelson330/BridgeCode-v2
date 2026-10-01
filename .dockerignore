@@ -1,0 +1,11 @@
+node_modules
+dist
+data
+.git
+.env
+.env.*
+!.env.example
+coverage
+test-results
+playwright-report
+MANUAL_HISTORIA_E_IDENTIDAD_NACIONAL_lzC0knx.pdf

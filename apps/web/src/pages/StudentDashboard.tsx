@@ -1,3 +1,24 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+import { BattlesModal } from '../components/battles/BattlesModal'
+import { AnswerControls } from '../components/game/AnswerControls'
+import { ReadingViewerModal } from '../components/lessons/ReadingViewerModal'
+import { LeaderboardTab } from '../components/ranking/LeaderboardTab'
+import { AsyncState } from '../components/ui/AsyncState'
+import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Dialog } from '../components/ui/Dialog'
+import { MarkdownText } from '../components/ui/MarkdownText'
+import { CustomSelect } from '../components/ui/Select'
+import { Tabs } from '../components/ui/Tabs'
+import { useAuth } from '../context/AuthContext'
+import { apiFetch } from '../lib/api'
+import { sound } from '../lib/audio-synth'
+import { triggerConfetti } from '../lib/confetti'
+import { notify, notifySuccess } from '../lib/feedback'
 import {
   AlertCircle,
   ArrowRight,
@@ -16,26 +37,7 @@ import {
   Swords,
   Trophy,
   Tv,
-} from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
-import { BattlesModal } from '../components/battles/BattlesModal'
-import { AnswerControls } from '../components/game/AnswerControls'
-import { ReadingViewerModal } from '../components/lessons/ReadingViewerModal'
-import { LeaderboardTab } from '../components/ranking/LeaderboardTab'
-import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
-import { Dialog } from '../components/ui/Dialog'
-import { MarkdownText } from '../components/ui/MarkdownText'
-import { CustomSelect } from '../components/ui/Select'
-import { Tabs } from '../components/ui/Tabs'
-import { useAuth } from '../context/AuthContext'
-import { apiFetch } from '../lib/api'
-import { sound } from '../lib/audio-synth'
-import { triggerConfetti } from '../lib/confetti'
+} from '../lib/icons'
 
 export function StudentDashboard() {
   const { user } = useAuth()
@@ -43,6 +45,8 @@ export function StudentDashboard() {
   const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState('homework')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [classes, setClasses] = useState<any[]>([])
   const [activeSessions, setActiveSessions] = useState<any[]>([])
   const [homeworkList, setHomeworkList] = useState<any[]>([])
@@ -80,27 +84,27 @@ export function StudentDashboard() {
   const loadStudentData = async () => {
     try {
       const [clsRes, sessRes, hwRes] = await Promise.all([
-        apiFetch<{ classes?: any[] }>('/api/student/classes').catch(() => ({ classes: [] })),
-        apiFetch<{ activeSessions?: any[]; sessions?: any[] }>('/api/student/active-sessions').catch(() => ({
-          activeSessions: [],
-          sessions: [],
-        })),
-        apiFetch<{ homework?: any[] }>('/api/student/homework').catch(() => ({ homework: [] })),
+        apiFetch<{ classes?: any[] }>('/api/student/classes'),
+        apiFetch<{ activeSessions?: any[]; sessions?: any[] }>('/api/student/active-sessions'),
+        apiFetch<{ homework?: any[] }>('/api/student/homework'),
       ])
 
       const loadedClasses = clsRes?.classes || []
       const loadedSessions = sessRes?.activeSessions || sessRes?.sessions || []
       const loadedHomework = hwRes?.homework || []
 
+      setLoadError(null)
       setClasses(loadedClasses)
       setActiveSessions(loadedSessions)
       setHomeworkList(loadedHomework)
 
       if (loadedClasses.length > 0 && !selectedClassId) {
-        setSelectedClassId(loadedClasses[0].classId)
+        setSelectedClassId((current) => current || loadedClasses[0].classId)
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'No se pudieron cargar tus actividades')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -109,11 +113,11 @@ export function StudentDashboard() {
 
     apiFetch<{ lessons?: any[] }>(`/api/groups/${selectedClassId}/lessons`)
       .then((res) => setClassLessons(res?.lessons || []))
-      .catch(() => setClassLessons([]))
+      .catch((error) => notify(error.message || 'No se pudieron cargar las lecciones'))
 
     apiFetch<{ posts?: any[] }>(`/api/classes/${selectedClassId}/wall/posts`)
       .then((res) => setWallPosts(res?.posts || []))
-      .catch(() => setWallPosts([]))
+      .catch((error) => notify(error.message || 'No se pudo cargar el muro'))
   }, [selectedClassId])
 
   const loadWallComments = async (postId: string) => {
@@ -145,7 +149,7 @@ export function StudentDashboard() {
       sound.playPowerup()
       const res = await apiFetch<{ exercises: any[] }>(`/api/lessons/${hw.lessonId}/exercises`)
       if (!res.exercises || res.exercises.length === 0) {
-        alert('Esta lección aún no contiene ejercicios para practicar.')
+        notify('Esta lección aún no contiene ejercicios para practicar.')
         return
       }
 
@@ -158,7 +162,7 @@ export function StudentDashboard() {
       setStartTime(Date.now())
       setIsPracticeModalOpen(true)
     } catch (err: any) {
-      alert(err.message || 'Error al iniciar la tarea')
+      notify(err.message || 'Error al iniciar la tarea')
     }
   }
 
@@ -197,7 +201,7 @@ export function StudentDashboard() {
         explanation: res.explanation || currentEx.explanation,
       })
     } catch (err: any) {
-      alert(err.message || 'Error al validar respuesta')
+      notify(err.message || 'Error al validar respuesta')
     }
   }
 
@@ -214,7 +218,7 @@ export function StudentDashboard() {
       triggerConfetti()
       setIsPracticeModalOpen(false)
       loadStudentData()
-      alert(`¡Felicitaciones! Has completado la tarea sumando ${earnedPoints} puntos.`)
+      notifySuccess(`¡Felicitaciones! Has completado la tarea sumando ${earnedPoints} puntos.`)
     }
   }
 
@@ -238,10 +242,10 @@ export function StudentDashboard() {
       triggerConfetti()
       setIsReadingModalOpen(false)
       await loadStudentData()
-      alert('¡Lectura registrada como completada con éxito (+100 pts)!')
+      notifySuccess('¡Lectura registrada como completada con éxito (+100 pts)!')
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al confirmar lectura')
+      notify(err.message || 'Error al confirmar lectura')
     }
   }
 
@@ -264,7 +268,7 @@ export function StudentDashboard() {
       setWallCommentsMap((prev) => ({ ...prev, [postId]: commentsRes?.comments || [] }))
       setExpandedPosts((prev) => new Set([...prev, postId]))
     } catch (err: any) {
-      alert(err.message)
+      notify(err.message)
     }
   }
 
@@ -272,16 +276,18 @@ export function StudentDashboard() {
 
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 select-none">
+      {loading && <AsyncState loading />}
+      {loadError && <AsyncState error={loadError} onRetry={loadStudentData} />}
       {/* Active Live Game Session Pulse Banner */}
       {(activeSessions || []).length > 0 && activeSessions[0] && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 border border-emerald-400/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-white"
+          className="p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 border border-emerald-400/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-on-accent"
         >
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center animate-bounce">
-              <Gamepad2 className="w-8 h-8 text-white" />
+              <Gamepad2 className="w-8 h-8 text-foreground" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -318,17 +324,17 @@ export function StudentDashboard() {
       )}
 
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-accent-soft/80 via-surface to-surface border border-line shadow-xl">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h1 className="font-display font-black text-2xl sm:text-3xl text-white">
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-foreground">
               {t('student.portalTitle')}
             </h1>
             <Badge variant="primary">Alumno</Badge>
           </div>
-          <p className="text-xs text-slate-400">
-            {t('student.welcome')}, <b className="text-white">{user?.displayName}</b> ({user?.username}) •
-            Revisa tus tareas, lecturas y compite en el ranking.
+          <p className="text-xs text-muted">
+            {t('student.welcome')}, <b className="text-foreground">{user?.displayName}</b> ({user?.username})
+            • Revisa tus tareas, lecturas y compite en el ranking.
           </p>
         </div>
 
@@ -338,7 +344,7 @@ export function StudentDashboard() {
             variant="game"
             size="md"
             onClick={() => setIsBattlesModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-rose-600 to-purple-600 text-white font-bold shadow-lg shadow-rose-500/20 shrink-0 justify-center text-xs sm:text-sm"
+            className="gap-2 bg-gradient-to-r from-rose-600 to-purple-600 text-on-accent font-bold shadow-lg shadow-rose-500/20 shrink-0 justify-center text-xs sm:text-sm"
           >
             <Swords className="w-4 h-4" />
             <span>{t('student.battleLaunch')}</span>
@@ -374,12 +380,12 @@ export function StudentDashboard() {
           {
             value: 'battles',
             label: t('student.tabs.battles'),
-            icon: <Swords className="w-4 h-4 text-rose-400" />,
+            icon: <Swords className="w-4 h-4 text-danger" />,
           },
           {
             value: 'ranking',
             label: t('student.tabs.ranking'),
-            icon: <Trophy className="w-4 h-4 text-amber-400" />,
+            icon: <Trophy className="w-4 h-4 text-warning" />,
           },
           { value: 'wall', label: t('student.tabs.wall'), icon: <MessageSquare className="w-4 h-4" /> },
         ]}
@@ -388,9 +394,9 @@ export function StudentDashboard() {
       {/* TAB 1: TAREAS ASIGNADAS */}
       {activeTab === 'homework' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-xl text-white">Tareas de tus Clases</h3>
-            <span className="text-xs text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-display font-bold text-xl text-foreground">Tareas de tus Clases</h3>
+            <span className="text-xs text-muted">
               {homeworkList.filter((h) => !h.completed).length} Pendientes
             </span>
           </div>
@@ -400,13 +406,13 @@ export function StudentDashboard() {
               <Card
                 key={hw.id}
                 hoverEffect
-                className="space-y-4 p-6 border-slate-800 flex flex-col justify-between"
+                className="space-y-4 p-6 border-line flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="font-display font-black text-xl text-white">{hw.title}</h4>
-                      <span className="text-xs text-slate-400">
+                      <h4 className="font-display font-black text-xl text-foreground">{hw.title}</h4>
+                      <span className="text-xs text-muted">
                         {hw.className} • Lección: {hw.lessonTitle}
                       </span>
                     </div>
@@ -426,18 +432,18 @@ export function StudentDashboard() {
                   </div>
 
                   {hw.instructions && (
-                    <p className="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                    <p className="text-xs text-secondary bg-canvas p-3 rounded-xl border border-line/80">
                       {hw.instructions}
                     </p>
                   )}
 
-                  <div className="flex items-center gap-2 text-xs text-amber-400">
+                  <div className="flex items-center gap-2 text-xs text-warning">
                     <Clock className="w-3.5 h-3.5" />
                     <span>Fecha límite: {new Date(hw.dueAt).toLocaleDateString()}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between pt-3 border-t border-line">
                   <div className="flex items-center gap-2">
                     {hw.completed ? (
                       <Badge variant="success" className="gap-1 text-xs">
@@ -492,10 +498,10 @@ export function StudentDashboard() {
             ))}
 
             {homeworkList.length === 0 && (
-              <div className="col-span-2 p-12 text-center rounded-3xl bg-slate-900/50 border border-slate-800 space-y-3">
-                <ClipboardList className="w-12 h-12 text-slate-600 mx-auto" />
-                <h4 className="font-bold text-white">¡No tienes tareas pendientes!</h4>
-                <p className="text-xs text-slate-400">
+              <div className="col-span-2 p-12 text-center rounded-3xl bg-surface/50 border border-line space-y-3">
+                <ClipboardList className="w-12 h-12 text-muted mx-auto" />
+                <h4 className="font-bold text-foreground">¡No tienes tareas pendientes!</h4>
+                <p className="text-xs text-muted">
                   Buen trabajo. Revisa el temario o compite en una batalla 1v1.
                 </p>
               </div>
@@ -507,18 +513,20 @@ export function StudentDashboard() {
       {/* TAB 2: TEMARIO Y MATERIALES DE LECTURA */}
       {activeTab === 'lessons' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-xl text-white">Temario y Materiales de Estudio</h3>
-            <span className="text-xs text-slate-400">{classLessons.length} Lecciones disponibles</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-display font-bold text-xl text-foreground">
+              Temario y Materiales de Estudio
+            </h3>
+            <span className="text-xs text-muted">{classLessons.length} Lecciones disponibles</span>
           </div>
 
           <div className="grid grid-cols-1 gap-6">
             {classLessons.map((lesson) => (
-              <Card key={lesson.id} hoverEffect className="space-y-4 p-6 border-slate-800">
+              <Card key={lesson.id} hoverEffect className="space-y-4 p-6 border-line">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="space-y-1">
-                    <h4 className="font-display font-black text-xl text-white">{lesson.title}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                    <h4 className="font-display font-black text-xl text-foreground">{lesson.title}</h4>
+                    <p className="text-xs text-muted leading-relaxed line-clamp-2">
                       {lesson.materialContent || 'Material conceptual publicado por tu profesor.'}
                     </p>
                   </div>
@@ -539,10 +547,10 @@ export function StudentDashboard() {
             ))}
 
             {classLessons.length === 0 && (
-              <div className="p-12 text-center rounded-3xl bg-slate-900/50 border border-slate-800 space-y-3">
-                <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
-                <h4 className="font-bold text-white">No hay lecciones publicadas</h4>
-                <p className="text-xs text-slate-400">
+              <div className="p-12 text-center rounded-3xl bg-surface/50 border border-line space-y-3">
+                <BookOpen className="w-12 h-12 text-muted mx-auto" />
+                <h4 className="font-bold text-foreground">No hay lecciones publicadas</h4>
+                <p className="text-xs text-muted">
                   Tu profesor aún no ha publicado contenidos para esta clase.
                 </p>
               </div>
@@ -553,13 +561,13 @@ export function StudentDashboard() {
 
       {/* TAB 3: BATALLAS 1v1 */}
       {activeTab === 'battles' && (
-        <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-6">
-          <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center mx-auto text-rose-400">
+        <div className="p-8 rounded-3xl bg-surface border border-line text-center space-y-6">
+          <div className="w-16 h-16 rounded-3xl bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center mx-auto text-danger">
             <Swords className="w-8 h-8" />
           </div>
           <div className="space-y-2 max-w-md mx-auto">
-            <h3 className="font-display font-black text-3xl text-white">Arena de Batallas 1v1</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="font-display font-black text-3xl text-foreground">Arena de Batallas 1v1</h3>
+            <p className="text-xs text-muted">
               Desafía a tus compañeros o al <b>Ghost Replay</b> de tu clase en duelos de trivia contra reloj
               para ganar puntos XP.
             </p>
@@ -568,7 +576,7 @@ export function StudentDashboard() {
             variant="game"
             size="xl"
             onClick={() => setIsBattlesModalOpen(true)}
-            className="gap-3 bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white font-black text-lg px-8 shadow-xl shadow-rose-500/30"
+            className="gap-3 bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-on-accent font-black text-lg px-8 shadow-xl shadow-rose-500/30"
           >
             <Swords className="w-5 h-5 fill-current" />
             <span>¡Entrar a la Arena de Batallas!</span>
@@ -589,15 +597,15 @@ export function StudentDashboard() {
         <div className="max-w-3xl mx-auto space-y-6">
           <div className="space-y-4">
             {wallPosts.map((post) => (
-              <Card key={post.id} className="space-y-4 p-6 border-slate-800">
-                <div className="flex items-center justify-between">
+              <Card key={post.id} className="space-y-4 p-6 border-line">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-accent flex items-center justify-center font-bold text-sm">
                       {post.authorName ? post.authorName[0] : 'U'}
                     </div>
                     <div>
-                      <span className="font-bold text-sm text-white block">{post.authorName}</span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="font-bold text-sm text-foreground block">{post.authorName}</span>
+                      <span className="text-[10px] text-muted">
                         {new Date(post.createdAt).toLocaleString()}
                       </span>
                     </div>
@@ -605,13 +613,13 @@ export function StudentDashboard() {
                   {post.isPinned && <Badge variant="warning">Fijado por Profesor</Badge>}
                 </div>
 
-                <p className="text-slate-200 text-sm leading-relaxed">{post.content}</p>
+                <p className="text-foreground text-sm leading-relaxed">{post.content}</p>
 
                 {/* Toggle comments */}
                 <button
                   type="button"
                   onClick={() => togglePostExpanded(post.id)}
-                  className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                  className="text-[11px] font-bold uppercase tracking-wider text-accent hover:text-accent transition-colors cursor-pointer"
                 >
                   {expandedPosts.has(post.id)
                     ? `Ocultar comentarios${wallCommentsMap[post.id]?.length ? ` (${wallCommentsMap[post.id]?.length})` : ''}`
@@ -620,25 +628,25 @@ export function StudentDashboard() {
 
                 {/* Comments List */}
                 {expandedPosts.has(post.id) && wallCommentsMap[post.id] && (
-                  <div className="space-y-2 pt-3 border-t border-slate-800/80">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <div className="space-y-2 pt-3 border-t border-line/80">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted block">
                       Comentarios ({wallCommentsMap[post.id]?.length ?? 0})
                     </span>
                     {(wallCommentsMap[post.id] ?? []).length === 0 ? (
-                      <p className="text-[11px] text-slate-500 italic">Sé el primero en comentar.</p>
+                      <p className="text-[11px] text-muted italic">Sé el primero en comentar.</p>
                     ) : (
                       (wallCommentsMap[post.id] ?? []).map((comm: any) => (
                         <div
                           key={comm.id}
-                          className="p-3 rounded-xl bg-slate-950 border border-slate-800/60 text-xs space-y-1"
+                          className="p-3 rounded-xl bg-canvas border border-line/60 text-xs space-y-1"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-indigo-300">{comm.authorName}</span>
-                            <span className="text-[10px] text-slate-500">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-bold text-accent">{comm.authorName}</span>
+                            <span className="text-[10px] text-muted">
                               {new Date(comm.createdAt).toLocaleTimeString()}
                             </span>
                           </div>
-                          <p className="text-slate-200">{comm.content}</p>
+                          <p className="text-foreground">{comm.content}</p>
                         </div>
                       ))
                     )}
@@ -652,7 +660,7 @@ export function StudentDashboard() {
                     value={newWallComment}
                     onChange={(e) => setNewWallComment(e.target.value)}
                     placeholder="Escribe una respuesta o comentario..."
-                    className="flex-1 px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-4 py-2 rounded-xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateWallComment(post.id)
                     }}
@@ -670,10 +678,10 @@ export function StudentDashboard() {
             ))}
 
             {wallPosts.length === 0 && (
-              <div className="p-12 text-center rounded-3xl bg-slate-900/50 border border-slate-800 space-y-2">
-                <MessageSquare className="w-10 h-10 text-slate-600 mx-auto" />
-                <h4 className="font-bold text-white">No hay publicaciones en el muro</h4>
-                <p className="text-xs text-slate-400">
+              <div className="p-12 text-center rounded-3xl bg-surface/50 border border-line space-y-2">
+                <MessageSquare className="w-10 h-10 text-muted mx-auto" />
+                <h4 className="font-bold text-foreground">No hay publicaciones en el muro</h4>
+                <p className="text-xs text-muted">
                   Los anuncios y temas de debate de tu profesor aparecerán aquí.
                 </p>
               </div>
@@ -691,15 +699,15 @@ export function StudentDashboard() {
       >
         {currentExercise ? (
           <div className="space-y-6">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-bold text-muted uppercase tracking-wider">
               <span>
                 Pregunta {currentExIndex + 1} de {lessonExercises.length}
               </span>
-              <span className="text-indigo-400">Puntos acumulados: {earnedPoints}</span>
+              <span className="text-accent">Puntos acumulados: {earnedPoints}</span>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-center">
-              <div className="font-display font-extrabold text-lg sm:text-xl text-white leading-relaxed">
+            <div className="p-6 rounded-2xl bg-surface border border-line text-center">
+              <div className="font-display font-extrabold text-lg sm:text-xl text-foreground leading-relaxed">
                 <MarkdownText content={currentExercise.prompt} />
               </div>
             </div>
@@ -734,25 +742,25 @@ export function StudentDashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 className={`p-4 rounded-2xl border text-center space-y-2 ${
                   feedback.isCorrect
-                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
-                    : 'bg-rose-950/60 border-rose-500/40 text-rose-200'
+                    ? 'bg-success-soft/60 border-emerald-500/40 text-success'
+                    : 'bg-danger-soft/60 border-rose-500/40 text-danger'
                 }`}
               >
                 <div className="font-bold text-base flex items-center justify-center gap-2">
                   {feedback.isCorrect ? (
                     <>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <CheckCircle2 className="w-5 h-5 text-success" />
                       <span>¡Respuesta Correcta! (+{currentExercise.points * 100} pts)</span>
                     </>
                   ) : (
                     <>
-                      <AlertCircle className="w-5 h-5 text-rose-400" />
+                      <AlertCircle className="w-5 h-5 text-danger" />
                       <span>Respuesta Incorrecta</span>
                     </>
                   )}
                 </div>
                 {feedback.explanation && (
-                  <div className="text-xs italic text-slate-300">
+                  <div className="text-xs italic text-secondary">
                     <MarkdownText content={feedback.explanation} />
                   </div>
                 )}
@@ -770,7 +778,7 @@ export function StudentDashboard() {
             )}
           </div>
         ) : (
-          <div className="text-center py-6 text-slate-400">Cargando ejercicios...</div>
+          <div className="text-center py-6 text-muted">Cargando ejercicios...</div>
         )}
       </Dialog>
 

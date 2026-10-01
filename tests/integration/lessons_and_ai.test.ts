@@ -10,7 +10,7 @@ import { isBlockedUrl } from '../../src/core/security/ssrf'
 
 describe('Lessons, Exercises & AI Engine (Fase 3)', () => {
   beforeEach(() => {
-    loadConfig({ MODE: 'local' })
+    loadConfig({})
     initDb(':memory:')
   })
 

@@ -9,7 +9,7 @@ export interface CardProps extends HTMLMotionProps<'div'> {
 
 export function Card({ className, hoverEffect = false, children, ...props }: CardProps) {
   const base =
-    'rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 shadow-xl p-4 sm:p-6 text-slate-100 transition-colors'
+    'rounded-2xl bg-surface/70 backdrop-blur-xl border border-line/80 shadow-xl p-4 sm:p-6 text-foreground transition-colors'
 
   if (hoverEffect) {
     return (

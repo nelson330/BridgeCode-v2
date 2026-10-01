@@ -15,7 +15,7 @@ RUN bun install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Build front-end (Vite outputs to dist/web) and back-end (bun build to dist/server)
+# Build front-end (dist/web) and the bundled back-end (dist/entry.js)
 RUN bun run build
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +29,6 @@ WORKDIR /app
 RUN apk add --no-cache tini wget
 
 ENV NODE_ENV=production
-ENV MODE=hosted
 ENV PORT=3000
 ENV DATA_DIR=/var/data
 
@@ -50,9 +49,7 @@ COPY --from=builder --chown=app:app /app/package.json ./
 
 EXPOSE 3000
 
-# Persistent disk is mounted here in production. On free tier (ephemeral disk)
-# Render ignores the mount and the container owns /var/data which is wiped
-# on every deploy. The auto-seed in src/entry.ts repopulates it.
+# Mount persistent storage here to retain SQLite, uploads and the seed marker.
 VOLUME ["/var/data"]
 
 # Health check (Render respects this if configured in the dashboard)

@@ -1,3 +1,16 @@
+import { motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import { AsyncState } from '../components/ui/AsyncState'
+import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Dialog } from '../components/ui/Dialog'
+import { Input } from '../components/ui/Input'
+import { CustomSelect } from '../components/ui/Select'
+import { apiFetch } from '../lib/api'
+import { sound } from '../lib/audio-synth'
+import { triggerConfetti } from '../lib/confetti'
+import { confirmAction, notify, notifySuccess } from '../lib/feedback'
 import {
   Activity,
   AlertCircle,
@@ -18,23 +31,13 @@ import {
   UserPlus,
   Users,
   XCircle,
-} from 'lucide-react'
-import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
-import { Dialog } from '../components/ui/Dialog'
-import { Input } from '../components/ui/Input'
-import { CustomSelect } from '../components/ui/Select'
-import { apiFetch } from '../lib/api'
-import { sound } from '../lib/audio-synth'
-import { triggerConfetti } from '../lib/confetti'
+} from '../lib/icons'
 
 export function Admin() {
   const [activeTab, setActiveTab] = useState<'requests' | 'teachers' | 'system'>('requests')
   const [metrics, setMetrics] = useState<any>(null)
   const [teachers, setTeachers] = useState<any[]>([])
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'banned'>('all')
@@ -51,10 +54,11 @@ export function Admin() {
 
   const loadData = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const [sysRes, teachRes] = await Promise.all([
-        apiFetch<any>('/api/admin/metrics').catch(() => null),
-        apiFetch<{ teachers: any[] }>('/api/admin/teachers').catch(() => ({ teachers: [] })),
+        apiFetch<any>('/api/admin/metrics'),
+        apiFetch<{ teachers: any[] }>('/api/admin/teachers'),
       ])
 
       if (sysRes?.metrics) {
@@ -64,8 +68,8 @@ export function Admin() {
       }
 
       setTeachers(teachRes?.teachers || [])
-    } catch {
-      // ignore
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'No se pudo cargar la administración')
     } finally {
       setLoading(false)
     }
@@ -78,7 +82,7 @@ export function Admin() {
   ) => {
     const actionLabel =
       status === 'active' ? 'aprobar/activar' : status === 'banned' ? 'suspender' : 'desactivar'
-    if (!confirm(`¿Confirmas ${actionLabel} la cuenta del docente "${teacherName}"?`)) return
+    if (!(await confirmAction(`¿Confirmas ${actionLabel} la cuenta del docente "${teacherName}"?`))) return
 
     try {
       await apiFetch(`/api/admin/teachers/${teacherId}/status`, {
@@ -95,7 +99,7 @@ export function Admin() {
 
       await loadData()
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar el estado del docente')
+      notify(err.message || 'Error al actualizar el estado del docente')
     }
   }
 
@@ -114,14 +118,14 @@ export function Admin() {
       )
 
       sound.playPowerup()
-      alert(
+      notifySuccess(
         `¡Contraseña actualizada exitosamente para el docente ${resetModalTeacher.displayName}!\nNueva clave: ${res.password}`
       )
       setResetModalTeacher(null)
       setNewPassword('')
       await loadData()
     } catch (err: any) {
-      alert(err.message || 'Error al resetear la contraseña')
+      notify(err.message || 'Error al resetear la contraseña')
     } finally {
       setIsResetting(false)
     }
@@ -129,9 +133,9 @@ export function Admin() {
 
   const handleDeleteTeacher = async (teacherId: string, teacherName: string) => {
     if (
-      !confirm(
+      !(await confirmAction(
         `¿Estás seguro de eliminar permanentemente la cuenta del docente "${teacherName}"? Se borrarán sus datos asociados.`
-      )
+      ))
     )
       return
 
@@ -140,7 +144,7 @@ export function Admin() {
       sound.playWheelTick()
       await loadData()
     } catch (err: any) {
-      alert(err.message || 'Error al eliminar el docente')
+      notify(err.message || 'Error al eliminar el docente')
     }
   }
 
@@ -152,9 +156,9 @@ export function Admin() {
       )
       sound.playVictory()
       triggerConfetti()
-      alert(`¡Copia de seguridad creada con éxito!\nArchivo: ${res.filename || 'backup-sqlite.json'}`)
+      notifySuccess(`¡Copia de seguridad creada con éxito!\nArchivo: ${res.filename || 'backup-sqlite.json'}`)
     } catch (err: any) {
-      alert(err.message || 'Error al generar la copia de seguridad')
+      notify(err.message || 'Error al generar la copia de seguridad')
     } finally {
       setIsBackingUp(false)
     }
@@ -175,22 +179,24 @@ export function Admin() {
 
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 select-none">
+      {loading && <AsyncState loading />}
+      {loadError && <AsyncState error={loadError} onRetry={loadData} />}
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-surface via-indigo-950/80 to-surface border border-line shadow-xl">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display font-black text-2xl sm:text-3xl text-white">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-foreground">
               Panel de Administración
             </h1>
             <Badge variant="primary">Webmaster</Badge>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             Control de altas docentes, gestión de contraseñas, telemetría y copias de seguridad de la base de
             datos.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
             size="md"
@@ -218,44 +224,40 @@ export function Admin() {
       {/* Telemetry Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card hoverEffect className="space-y-2 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Docentes Activos
-            </span>
-            <Users className="w-4 h-4 text-emerald-400" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Docentes Activos</span>
+            <Users className="w-4 h-4 text-success" />
           </div>
-          <div className="font-display font-black text-2xl sm:text-3xl text-emerald-400">
+          <div className="font-display font-black text-2xl sm:text-3xl text-success">
             {approvedTeachers.length}
           </div>
         </Card>
 
         <Card hoverEffect className="space-y-2 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">
               Solicitudes Pendientes
             </span>
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <AlertTriangle className="w-4 h-4 text-warning" />
           </div>
-          <div className="font-display font-black text-2xl sm:text-3xl text-amber-400">
+          <div className="font-display font-black text-2xl sm:text-3xl text-warning">
             {pendingTeachers.length}
           </div>
         </Card>
 
         <Card hoverEffect className="space-y-2 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Alumnos Registrados
-            </span>
-            <GraduationCap className="w-4 h-4 text-indigo-400" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Alumnos Registrados</span>
+            <GraduationCap className="w-4 h-4 text-accent" />
           </div>
-          <div className="font-display font-black text-2xl sm:text-3xl text-indigo-400">
+          <div className="font-display font-black text-2xl sm:text-3xl text-accent">
             {metrics?.studentsCount || 0}
           </div>
         </Card>
 
         <Card hoverEffect className="space-y-2 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Clases Creadas</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Clases Creadas</span>
             <Database className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="font-display font-black text-2xl sm:text-3xl text-cyan-400">
@@ -265,7 +267,7 @@ export function Admin() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
         <Button
           variant={activeTab === 'requests' ? 'primary' : 'ghost'}
           size="sm"
@@ -299,11 +301,13 @@ export function Admin() {
 
       {/* TAB 1: SOLICITUDES PENDIENTES */}
       {activeTab === 'requests' && (
-        <Card className="space-y-4 p-6 border-slate-800">
-          <div className="flex items-center justify-between">
+        <Card className="space-y-4 p-6 border-line">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="font-display font-bold text-xl text-white">Solicitudes de Registro Docente</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-display font-bold text-xl text-foreground">
+                Solicitudes de Registro Docente
+              </h3>
+              <p className="text-xs text-muted">
                 Profesores que han completado el formulario de postulación y esperan aprobación.
               </p>
             </div>
@@ -315,25 +319,25 @@ export function Admin() {
               {pendingTeachers.map((t) => (
                 <div
                   key={t.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-950 border border-slate-800"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-canvas border border-line"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-sm">{t.displayName}</span>
-                      <span className="text-xs font-mono text-indigo-300">@{t.username}</span>
+                      <span className="font-bold text-foreground text-sm">{t.displayName}</span>
+                      <span className="text-xs font-mono text-accent">@{t.username}</span>
                     </div>
-                    {t.bio && <p className="text-xs text-slate-400">{t.bio}</p>}
-                    <span className="text-[10px] text-slate-500 block">
+                    {t.bio && <p className="text-xs text-muted">{t.bio}</p>}
+                    <span className="text-[10px] text-muted block">
                       Registrado: {new Date(t.createdAt).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="success"
                       size="sm"
                       onClick={() => handleUpdateStatus(t.id, 'active', t.displayName)}
-                      className="gap-1 text-xs text-white"
+                      className="gap-1 text-xs text-foreground"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Aprobar Cuenta</span>
@@ -348,7 +352,7 @@ export function Admin() {
                       }}
                       className="gap-1 text-xs"
                     >
-                      <Key className="w-3.5 h-3.5 text-amber-400" />
+                      <Key className="w-3.5 h-3.5 text-warning" />
                       <span>Fijar Clave</span>
                     </Button>
 
@@ -366,10 +370,10 @@ export function Admin() {
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center rounded-2xl bg-slate-950/40 border border-slate-800 text-xs text-slate-400 space-y-2">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+            <div className="p-8 text-center rounded-2xl bg-canvas/40 border border-line text-xs text-muted space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-success mx-auto" />
               <p>¡No hay solicitudes de registro pendientes!</p>
-              <p className="text-slate-500">
+              <p className="text-muted">
                 Cuando nuevos docentes se registren desde el portal de inicio, aparecerán aquí para tu
                 revisión.
               </p>
@@ -380,18 +384,18 @@ export function Admin() {
 
       {/* TAB 2: DIRECTORIO DE DOCENTES */}
       {activeTab === 'teachers' && (
-        <Card className="space-y-4 p-6 border-slate-800">
+        <Card className="space-y-4 p-6 border-line">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="font-display font-bold text-xl text-white">Directorio Docente</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="font-display font-bold text-xl text-foreground">Directorio Docente</h3>
+              <p className="text-xs text-muted">
                 Administra todos los profesores registrados, modifica su estado o restablece sus contraseñas.
               </p>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <Input
                   placeholder="Buscar por nombre o usuario..."
                   value={searchTerm}
@@ -417,7 +421,7 @@ export function Admin() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800">
+              <thead className="bg-canvas text-muted font-bold uppercase tracking-wider border-b border-line">
                 <tr>
                   <th className="p-4">Docente</th>
                   <th className="p-4">Usuario</th>
@@ -426,16 +430,16 @@ export function Admin() {
                   <th className="p-4 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-line/80">
                 {filteredTeachers.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={t.id} className="hover:bg-elevated/30 transition-colors">
                     <td className="p-4">
-                      <span className="font-bold text-white block">{t.displayName}</span>
-                      {t.bio && <span className="text-[11px] text-slate-400 line-clamp-1">{t.bio}</span>}
+                      <span className="font-bold text-foreground block">{t.displayName}</span>
+                      {t.bio && <span className="text-[11px] text-muted line-clamp-1">{t.bio}</span>}
                     </td>
-                    <td className="p-4 font-mono text-indigo-300">{t.username}</td>
+                    <td className="p-4 font-mono text-accent">{t.username}</td>
                     <td className="p-4">
-                      <span className="font-bold text-white">{t.classesCount || 0}</span> clases
+                      <span className="font-bold text-foreground">{t.classesCount || 0}</span> clases
                     </td>
                     <td className="p-4">
                       {t.status === 'active' && <Badge variant="success">Activo</Badge>}
@@ -448,7 +452,7 @@ export function Admin() {
                           variant="success"
                           size="sm"
                           onClick={() => handleUpdateStatus(t.id, 'active', t.displayName)}
-                          className="gap-1 text-xs text-white"
+                          className="gap-1 text-xs text-foreground"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Aprobar</span>
@@ -460,7 +464,7 @@ export function Admin() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleUpdateStatus(t.id, 'banned', t.displayName)}
-                          className="gap-1 text-xs text-rose-400 hover:text-rose-300"
+                          className="gap-1 text-xs text-danger hover:text-danger"
                         >
                           <Ban className="w-3.5 h-3.5" />
                           <span>Suspender</span>
@@ -472,7 +476,7 @@ export function Admin() {
                           variant="secondary"
                           size="sm"
                           onClick={() => handleUpdateStatus(t.id, 'active', t.displayName)}
-                          className="gap-1 text-xs text-emerald-400"
+                          className="gap-1 text-xs text-success"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           <span>Reactivar</span>
@@ -488,7 +492,7 @@ export function Admin() {
                         }}
                         className="gap-1 text-xs"
                       >
-                        <Key className="w-3.5 h-3.5 text-amber-400" />
+                        <Key className="w-3.5 h-3.5 text-warning" />
                         <span>Cambiar Clave</span>
                       </Button>
 
@@ -507,7 +511,7 @@ export function Admin() {
 
                 {filteredTeachers.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">
+                    <td colSpan={5} className="p-8 text-center text-muted">
                       No se encontraron docentes con los filtros aplicados.
                     </td>
                   </tr>
@@ -520,42 +524,44 @@ export function Admin() {
 
       {/* TAB 3: TELEMETRÍA Y SISTEMA */}
       {activeTab === 'system' && (
-        <Card className="space-y-6 p-6 border-slate-800">
-          <h3 className="font-display font-bold text-xl text-white">Métricas del Servidor & Entorno</h3>
+        <Card className="space-y-6 p-6 border-line">
+          <h3 className="font-display font-bold text-xl text-foreground">Métricas del Servidor & Entorno</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400 block font-semibold">Total de Usuarios</span>
-              <span className="font-display font-black text-2xl text-white">{metrics?.usersCount || 0}</span>
+            <div className="p-4 rounded-2xl bg-canvas border border-line space-y-1">
+              <span className="text-xs text-muted block font-semibold">Total de Usuarios</span>
+              <span className="font-display font-black text-2xl text-foreground">
+                {metrics?.usersCount || 0}
+              </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400 block font-semibold">Lecciones Activas</span>
-              <span className="font-display font-black text-2xl text-white">
+            <div className="p-4 rounded-2xl bg-canvas border border-line space-y-1">
+              <span className="text-xs text-muted block font-semibold">Lecciones Activas</span>
+              <span className="font-display font-black text-2xl text-foreground">
                 {metrics?.lessonsCount || 0}
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400 block font-semibold">Sesiones de Juego en Vivo</span>
-              <span className="font-display font-black text-2xl text-white">
+            <div className="p-4 rounded-2xl bg-canvas border border-line space-y-1">
+              <span className="text-xs text-muted block font-semibold">Sesiones de Juego en Vivo</span>
+              <span className="font-display font-black text-2xl text-foreground">
                 {metrics?.sessionsCount || 0}
               </span>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs text-slate-400 space-y-2">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+          <div className="p-4 rounded-2xl bg-canvas/70 border border-line text-xs text-muted space-y-2">
+            <div className="flex items-center justify-between border-b border-line/80 pb-2">
               <span>Versión de Node/Bun Runtime:</span>
-              <span className="font-mono text-white">{metrics?.nodeVersion || process.version}</span>
+              <span className="font-mono text-foreground">{metrics?.nodeVersion || process.version}</span>
             </div>
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            <div className="flex items-center justify-between border-b border-line/80 pb-2">
               <span>Plataforma del Servidor:</span>
-              <span className="font-mono text-white">{metrics?.platform || process.platform}</span>
+              <span className="font-mono text-foreground">{metrics?.platform || process.platform}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span>Tiempo de Actividad (Uptime):</span>
-              <span className="font-mono text-white">{metrics?.uptimeSec || 0} segundos</span>
+              <span className="font-mono text-foreground">{metrics?.uptimeSec || 0} segundos</span>
             </div>
           </div>
         </Card>
@@ -573,10 +579,14 @@ export function Admin() {
       >
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="admin-field-1"
+            >
               Nueva Contraseña
             </label>
             <Input
+              id="admin-field-1"
               type="text"
               placeholder="Ej: docente2026 o claveSegura123"
               value={newPassword}
@@ -586,7 +596,7 @@ export function Admin() {
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
             <Button type="button" variant="ghost" onClick={() => setResetModalTeacher(null)}>
               Cancelar
             </Button>

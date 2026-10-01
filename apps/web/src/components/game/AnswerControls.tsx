@@ -1,3 +1,6 @@
+import { motion } from 'motion/react'
+import { useEffect, useMemo, useState } from 'react'
+import { sound } from '../../lib/audio-synth'
 import {
   ArrowDown,
   ArrowUp,
@@ -15,10 +18,7 @@ import {
   Square,
   Triangle,
   X,
-} from 'lucide-react'
-import { motion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
-import { sound } from '../../lib/audio-synth'
+} from '../../lib/icons'
 import { Button } from '../ui/Button'
 
 interface AnswerControlsProps {
@@ -35,30 +35,50 @@ interface AnswerControlsProps {
 const BUTTON_CONFIGS = [
   { bg: 'bg-rose-600 active:bg-rose-700', border: 'border-rose-400', icon: Triangle, label: 'A' },
   { bg: 'bg-blue-600 active:bg-blue-700', border: 'border-blue-400', icon: Diamond, label: 'B' },
-  { bg: 'bg-amber-500 active:bg-amber-600', border: 'border-amber-300', icon: Circle, label: 'C' },
-  { bg: 'bg-emerald-600 active:bg-emerald-700', border: 'border-emerald-400', icon: Square, label: 'D' },
+  { bg: 'bg-amber-700 active:bg-amber-800', border: 'border-amber-300', icon: Circle, label: 'C' },
+  { bg: 'bg-emerald-700 active:bg-emerald-800', border: 'border-emerald-400', icon: Square, label: 'D' },
 ]
 
 const TILE_COLORS = [
-  'bg-indigo-600 hover:bg-indigo-500 border-indigo-400 text-white',
-  'bg-emerald-600 hover:bg-emerald-500 border-emerald-400 text-white',
-  'bg-amber-500 hover:bg-amber-400 border-amber-300 text-slate-950',
-  'bg-rose-600 hover:bg-rose-500 border-rose-400 text-white',
-  'bg-purple-600 hover:bg-purple-500 border-purple-400 text-white',
-  'bg-cyan-600 hover:bg-cyan-500 border-cyan-400 text-white',
+  'bg-indigo-700 hover:bg-indigo-800 border-indigo-400 text-on-accent',
+  'bg-emerald-700 hover:bg-emerald-800 border-emerald-400 text-on-accent',
+  'bg-amber-700 hover:bg-amber-800 border-amber-500 text-on-accent',
+  'bg-rose-700 hover:bg-rose-800 border-rose-400 text-on-accent',
+  'bg-purple-700 hover:bg-purple-800 border-purple-400 text-on-accent',
+  'bg-cyan-700 hover:bg-cyan-800 border-cyan-400 text-on-accent',
 ]
 
 const PAIR_COLORS = [
-  { bg: 'bg-indigo-950/80', border: 'border-indigo-500', badge: 'bg-indigo-500 text-white', label: 'Par 1' },
   {
-    bg: 'bg-emerald-950/80',
+    bg: 'bg-accent-soft/80',
+    border: 'border-indigo-500',
+    badge: 'bg-indigo-700 text-on-accent',
+    label: 'Par 1',
+  },
+  {
+    bg: 'bg-success-soft/80',
     border: 'border-emerald-500',
     badge: 'bg-emerald-500 text-slate-950',
     label: 'Par 2',
   },
-  { bg: 'bg-amber-950/80', border: 'border-amber-500', badge: 'bg-amber-500 text-slate-950', label: 'Par 3' },
-  { bg: 'bg-rose-950/80', border: 'border-rose-500', badge: 'bg-rose-500 text-white', label: 'Par 4' },
-  { bg: 'bg-purple-950/80', border: 'border-purple-500', badge: 'bg-purple-500 text-white', label: 'Par 5' },
+  {
+    bg: 'bg-warning-soft/80',
+    border: 'border-amber-500',
+    badge: 'bg-amber-500 text-slate-950',
+    label: 'Par 3',
+  },
+  {
+    bg: 'bg-danger-soft/80',
+    border: 'border-rose-500',
+    badge: 'bg-rose-700 text-on-accent',
+    label: 'Par 4',
+  },
+  {
+    bg: 'bg-purple-950/80',
+    border: 'border-purple-500',
+    badge: 'bg-purple-700 text-on-accent',
+    label: 'Par 5',
+  },
   { bg: 'bg-cyan-950/80', border: 'border-cyan-500', badge: 'bg-cyan-500 text-slate-950', label: 'Par 6' },
 ]
 
@@ -408,25 +428,25 @@ export function AnswerControls({
   // Slide: no answer needed
   if (exerciseType === 'slide') {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 rounded-3xl bg-indigo-950/40 border border-indigo-800/40">
-        <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
-        <p className="text-slate-400 text-sm">Diapositiva informativa...</p>
+      <div className="flex flex-col items-center justify-center p-8 text-center space-y-3 rounded-3xl bg-accent-soft/40 border border-indigo-800/40">
+        <Sparkles className="w-8 h-8 text-accent animate-pulse" />
+        <p className="text-muted text-sm">Diapositiva informativa...</p>
       </div>
     )
   }
 
   if (hasSubmitted) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center space-y-4 rounded-3xl bg-slate-900/80 border border-slate-800 backdrop-blur-xl">
+      <div className="flex flex-col items-center justify-center p-12 text-center space-y-4 rounded-3xl bg-surface/80 border border-line backdrop-blur-xl">
         <motion.div
           animate={{ scale: [1, 1.15, 1] }}
           transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1.5 }}
-          className="w-16 h-16 rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex items-center justify-center text-indigo-400"
+          className="w-16 h-16 rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex items-center justify-center text-accent"
         >
           <Check className="w-8 h-8" />
         </motion.div>
-        <h3 className="font-display font-black text-2xl text-white">¡Respuesta Enviada!</h3>
-        <p className="text-slate-400 text-sm flex items-center gap-2">
+        <h3 className="font-display font-black text-2xl text-foreground">¡Respuesta Enviada!</h3>
+        <p className="text-muted text-sm flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
           Procesando resultado...
         </p>
@@ -447,9 +467,9 @@ export function AnswerControls({
 
     return (
       <div className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
+        <div className="p-5 rounded-3xl bg-surface/90 border border-line space-y-4 shadow-xl">
           <div className="text-center space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-accent block">
               {isWordCloud
                 ? 'Selecciona una idea o palabra clave:'
                 : isShortOrOpen
@@ -458,7 +478,7 @@ export function AnswerControls({
                     ? 'Elige la respuesta exacta:'
                     : 'Elige la palabra correcta para completar el espacio:'}
             </span>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-muted">
               {isWordCloud
                 ? 'Toca la palabra que mejor responde a la pregunta'
                 : 'Toca una opción para responder'}
@@ -478,7 +498,7 @@ export function AnswerControls({
                   whileTap={{ scale: 0.94 }}
                   className={`p-3.5 sm:p-4 rounded-2xl border-2 font-display font-bold text-sm sm:text-base shadow-lg transition-all cursor-pointer select-none flex items-center justify-center gap-2 text-center ${
                     isChosen
-                      ? 'bg-indigo-600 border-indigo-300 ring-4 ring-indigo-500/40 text-white'
+                      ? 'bg-indigo-600 border-indigo-300 ring-4 ring-indigo-500/40 text-on-accent'
                       : TILE_COLORS[idx % TILE_COLORS.length]
                   }`}
                 >
@@ -496,13 +516,13 @@ export function AnswerControls({
   if (exerciseType === 'slider') {
     return (
       <div className="space-y-4 w-full">
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center flex items-center justify-center gap-1.5">
+        <div className="p-5 rounded-3xl bg-surface/90 border border-line space-y-4 shadow-xl">
+          <label className="text-xs font-bold uppercase tracking-wider text-accent block text-center flex items-center justify-center gap-1.5">
             <SlidersHorizontal className="w-4 h-4" />
             Ajusta el valor numérico:
           </label>
           <div className="text-center">
-            <span className="font-display font-black text-5xl text-white">{sliderValue}</span>
+            <span className="font-display font-black text-5xl text-foreground">{sliderValue}</span>
           </div>
           <input
             type="range"
@@ -511,9 +531,9 @@ export function AnswerControls({
             value={sliderValue}
             onChange={(e) => setSliderValue(Number(e.target.value))}
             disabled={disabled}
-            className="w-full h-3 rounded-full appearance-none bg-slate-700 cursor-pointer accent-indigo-500"
+            className="w-full h-3 rounded-full appearance-none bg-selected cursor-pointer accent-indigo-500"
           />
-          <div className="flex justify-between text-xs text-slate-500 font-mono font-bold">
+          <div className="flex justify-between text-xs text-muted font-mono font-bold">
             <span>{sliderConfig.min}</span>
             <span>{sliderConfig.max}</span>
           </div>
@@ -537,20 +557,20 @@ export function AnswerControls({
     return (
       <div className="space-y-4 w-full">
         <div className="text-center">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center justify-center gap-1.5">
             <MapPin className="w-4 h-4" />
             Toca la imagen para colocar tu marcador
           </span>
         </div>
         <button
           type="button"
-          className="relative rounded-2xl overflow-hidden border-2 border-slate-700 cursor-crosshair w-full text-left p-0"
+          className="relative rounded-2xl overflow-hidden border-2 border-line cursor-crosshair w-full text-left p-0"
           onClick={handlePinDrop}
         >
           {mediaUrl ? (
             <img src={mediaUrl} alt="Imagen para marcar" className="w-full h-auto" />
           ) : (
-            <div className="w-full h-64 bg-slate-800 flex items-center justify-center text-slate-500">
+            <div className="w-full h-64 bg-elevated flex items-center justify-center text-muted">
               Imagen no disponible
             </div>
           )}
@@ -579,11 +599,11 @@ export function AnswerControls({
     return (
       <div className="space-y-4 w-full">
         <div className="text-center space-y-0.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center justify-center gap-1.5">
             <ListOrdered className="w-4 h-4" />
             Ordena los elementos usando las flechas:
           </span>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-muted">
             Mueve cada paso hacia arriba o hacia abajo para formar el orden correcto
           </p>
         </div>
@@ -592,13 +612,13 @@ export function AnswerControls({
           {orderItems.map((item, index) => (
             <div
               key={item.id}
-              className="p-3 sm:p-4 rounded-2xl bg-slate-900 border-2 border-slate-700/80 flex items-center justify-between gap-3 shadow-md"
+              className="p-3 sm:p-4 rounded-2xl bg-surface border-2 border-line/80 flex items-center justify-between gap-3 shadow-md"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-black text-xs flex items-center justify-center shrink-0 font-mono">
+                <span className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-accent font-black text-xs flex items-center justify-center shrink-0 font-mono">
                   {index + 1}
                 </span>
-                <span className="text-sm sm:text-base font-bold text-white truncate">{item.text}</span>
+                <span className="text-sm sm:text-base font-bold text-foreground truncate">{item.text}</span>
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
@@ -606,7 +626,7 @@ export function AnswerControls({
                   type="button"
                   disabled={disabled || index === 0}
                   onClick={() => handleMoveOrder(index, 'up')}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-elevated hover:bg-selected disabled:opacity-30 disabled:cursor-not-allowed text-foreground transition-colors cursor-pointer"
                   title="Mover arriba"
                 >
                   <ArrowUp className="w-4 h-4" />
@@ -615,7 +635,7 @@ export function AnswerControls({
                   type="button"
                   disabled={disabled || index === orderItems.length - 1}
                   onClick={() => handleMoveOrder(index, 'down')}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-elevated hover:bg-selected disabled:opacity-30 disabled:cursor-not-allowed text-foreground transition-colors cursor-pointer"
                   title="Mover abajo"
                 >
                   <ArrowDown className="w-4 h-4" />
@@ -648,22 +668,22 @@ export function AnswerControls({
     return (
       <div className="space-y-4 w-full">
         <div className="text-center space-y-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-center gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-accent flex items-center justify-center gap-1.5">
             <Shuffle className="w-4 h-4" />
             Toca un Concepto (izquierda) y su Definición (derecha) o viceversa
           </span>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-muted">
             {selectedLeftIdx !== null ? (
-              <span className="text-amber-400 font-bold animate-pulse">
-                👉 Ahora selecciona la definición correspondiente en la columna derecha
+              <span className="text-warning font-bold animate-pulse">
+                Ahora selecciona la definición correspondiente en la columna derecha
               </span>
             ) : selectedRightIdx !== null ? (
-              <span className="text-amber-400 font-bold animate-pulse">
-                👉 Ahora selecciona el concepto correspondiente en la columna izquierda
+              <span className="text-warning font-bold animate-pulse">
+                Ahora selecciona el concepto correspondiente en la columna izquierda
               </span>
             ) : matchedCount === totalPairs && totalPairs > 0 ? (
-              <span className="text-emerald-400 font-bold">
-                ✓ ¡Todos los pares emparejados! Haz clic en Confirmar.
+              <span className="text-success font-bold">
+                ¡Todos los pares emparejados! Haz clic en Confirmar.
               </span>
             ) : (
               <span>Empareja todos los conceptos con su definición correspondiente</span>
@@ -674,7 +694,7 @@ export function AnswerControls({
         <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
           {/* Left Column: Concepts */}
           <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold text-center bg-slate-900/60 py-1 rounded-lg border border-slate-800">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-extrabold text-center bg-surface/60 py-1 rounded-lg border border-line">
               Concepto
             </div>
             {matchLeftItems.map((lItem, leftIdx) => {
@@ -691,12 +711,12 @@ export function AnswerControls({
                     onClick={() => handlePickMatchLeft(leftIdx)}
                     className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-bold transition-all cursor-pointer min-h-[56px] flex items-center justify-between gap-2 select-none ${
                       isSelected
-                        ? 'bg-indigo-600/40 border-indigo-400 text-white ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
+                        ? 'bg-indigo-600/40 border-indigo-400 text-foreground ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
                         : isMatched
-                          ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md`
+                          ? `${pairColor?.bg} ${pairColor?.border} text-foreground shadow-md`
                           : selectedRightIdx !== null
-                            ? 'bg-slate-900 border-indigo-500/80 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 animate-pulse'
-                            : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
+                            ? 'bg-surface border-indigo-500/80 text-foreground hover:bg-accent-soft/60 ring-2 ring-indigo-500/30 animate-pulse'
+                            : 'bg-surface/90 border-line/80 text-foreground hover:border-slate-500 hover:bg-slate-850'
                     }`}
                   >
                     <span className="leading-snug">{lItem.text || `Concepto ${leftIdx + 1}`}</span>
@@ -714,7 +734,7 @@ export function AnswerControls({
                             e.stopPropagation()
                             handleUnpairMatch(leftIdx)
                           }}
-                          className="text-slate-400 hover:text-rose-400 p-0.5 cursor-pointer"
+                          className="text-muted hover:text-danger p-0.5 cursor-pointer"
                           title="Desemparejar"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -729,7 +749,7 @@ export function AnswerControls({
 
           {/* Right Column: Definitions */}
           <div className="space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold text-center bg-slate-900/60 py-1 rounded-lg border border-slate-800">
+            <div className="text-[10px] uppercase tracking-wider text-muted font-extrabold text-center bg-surface/60 py-1 rounded-lg border border-line">
               Definición
             </div>
             {matchRightItems.map((rItem, rightIdx) => {
@@ -749,12 +769,12 @@ export function AnswerControls({
                     onClick={() => handlePickMatchRight(rightIdx)}
                     className={`w-full p-3 rounded-2xl border-2 text-left text-xs sm:text-sm font-semibold transition-all select-none min-h-[56px] flex items-center justify-between gap-2 cursor-pointer ${
                       isSelected
-                        ? 'bg-indigo-600/40 border-indigo-400 text-white ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
+                        ? 'bg-indigo-600/40 border-indigo-400 text-foreground ring-4 ring-indigo-500/40 shadow-lg scale-[1.02]'
                         : isPaired
-                          ? `${pairColor?.bg} ${pairColor?.border} text-white shadow-md`
+                          ? `${pairColor?.bg} ${pairColor?.border} text-foreground shadow-md`
                           : selectedLeftIdx !== null
-                            ? 'bg-slate-900 border-indigo-500 text-white hover:bg-indigo-950/60 ring-2 ring-indigo-500/30 animate-pulse'
-                            : 'bg-slate-900/90 border-slate-700/80 text-slate-200 hover:border-slate-500 hover:bg-slate-850'
+                            ? 'bg-surface border-indigo-500 text-foreground hover:bg-accent-soft/60 ring-2 ring-indigo-500/30 animate-pulse'
+                            : 'bg-surface/90 border-line/80 text-foreground hover:border-slate-500 hover:bg-slate-850'
                     }`}
                   >
                     <span className="leading-snug">{rItem.text || `Definición ${rightIdx + 1}`}</span>
@@ -772,7 +792,7 @@ export function AnswerControls({
                             e.stopPropagation()
                             if (pairedLeftIdx !== null) handleUnpairMatch(pairedLeftIdx)
                           }}
-                          className="text-slate-400 hover:text-rose-400 p-0.5 cursor-pointer"
+                          className="text-muted hover:text-danger p-0.5 cursor-pointer"
                           title="Desemparejar"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -786,17 +806,17 @@ export function AnswerControls({
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+        <div className="flex items-center justify-between text-xs text-muted px-1">
           <span>
-            Pares completados: <b className="text-white">{matchedCount}</b> / {totalPairs}
+            Pares completados: <b className="text-foreground">{matchedCount}</b> / {totalPairs}
           </span>
           {selectedLeftIdx !== null && (
-            <span className="text-indigo-400 font-bold">
+            <span className="text-accent font-bold">
               Seleccionando par para Concepto #{selectedLeftIdx + 1}
             </span>
           )}
           {selectedRightIdx !== null && (
-            <span className="text-indigo-400 font-bold">
+            <span className="text-accent font-bold">
               Seleccionando par para Definición #{selectedRightIdx + 1}
             </span>
           )}
@@ -838,14 +858,14 @@ export function AnswerControls({
             whileTap={{ scale: 0.94 }}
             onClick={() => handleSelectMcTf(index)}
             disabled={disabled || hasSubmitted}
-            className={`flex items-center gap-4 p-5 sm:p-6 rounded-3xl border-4 text-white shadow-2xl transition-all cursor-pointer select-none text-left ${btn.bg} ${btn.border}`}
+            className={`flex items-center gap-4 p-5 sm:p-6 rounded-3xl border-4 text-on-accent shadow-2xl transition-all cursor-pointer select-none text-left ${btn.bg} ${btn.border}`}
           >
             <div className="w-12 h-12 rounded-2xl bg-black/20 border border-white/20 flex items-center justify-center shrink-0">
-              <Icon className="w-7 h-7 text-white drop-shadow-md" />
+              <Icon className="w-7 h-7 text-on-accent drop-shadow-md" />
             </div>
             <div className="flex-1 min-w-0">
               {!isTf && optionText && (
-                <span className="text-[10px] uppercase font-mono font-bold text-white/80 block">
+                <span className="text-[10px] uppercase font-mono font-bold text-on-accent/80 block">
                   Opción {btn.label}
                 </span>
               )}

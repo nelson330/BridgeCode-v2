@@ -1,4 +1,3 @@
-import { AlertCircle, ArrowRight, CheckCircle2, Lock, LogIn, User, UserPlus } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -10,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { sound } from '../lib/audio-synth'
 import { triggerConfetti } from '../lib/confetti'
+import { AlertCircle, ArrowRight, CheckCircle2, Lock, LogIn, User, UserPlus } from '../lib/icons'
 
 export function Login() {
   const { login } = useAuth()
@@ -100,22 +100,27 @@ export function Login() {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md space-y-6"
       >
-        <Card className="p-5 sm:p-8 shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl">
+        <Card className="p-5 sm:p-8 shadow-2xl border-line bg-surface/90 backdrop-blur-xl">
           <div className="text-center space-y-2 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center mx-auto text-indigo-400 mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center mx-auto text-accent mb-3">
               <LogIn className="w-6 h-6" />
             </div>
-            <h2 className="font-display font-black text-2xl sm:text-3xl text-white">Iniciar Sesión</h2>
-            <p className="text-xs text-slate-400">Accede a tu cuenta para continuar.</p>
+            <h2 className="font-display font-black text-2xl sm:text-3xl text-foreground">Iniciar Sesión</h2>
+            <p className="text-xs text-muted">Accede a tu cuenta para continuar.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
+              <label
+                htmlFor="login-username"
+                className="text-xs font-semibold text-secondary flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5 text-muted" />
                 Nombre de Usuario
               </label>
               <Input
+                id="login-username"
+                autoComplete="username"
                 type="text"
                 placeholder="docente o sofia.garcia"
                 value={username}
@@ -125,11 +130,17 @@ export function Login() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <label
+                htmlFor="login-password"
+                className="text-xs font-semibold text-secondary flex items-center gap-1.5"
+              >
+                <Lock className="w-3.5 h-3.5 text-muted" />
                 Contraseña
               </label>
               <Input
+                error={errorMessage || undefined}
+                id="login-password"
+                autoComplete="current-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -137,13 +148,6 @@ export function Login() {
                 required
               />
             </div>
-
-            {errorMessage && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
 
             <Button
               type="submit"
@@ -158,7 +162,7 @@ export function Login() {
           </form>
 
           {/* Teacher Registration Link */}
-          <div className="mt-4 pt-4 border-t border-slate-800/80 text-center">
+          <div className="mt-4 pt-4 border-t border-line/80 text-center">
             <button
               type="button"
               onClick={() => {
@@ -166,7 +170,7 @@ export function Login() {
                 setRegSuccessMessage(null)
                 setIsRegisterOpen(true)
               }}
-              className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="text-xs text-accent hover:text-accent font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>¿Eres profesor nuevo? Solicita tu cuenta docente</span>
@@ -185,10 +189,14 @@ export function Login() {
       >
         <form onSubmit={handleRegisterTeacher} className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1"
+              htmlFor="login-field-1"
+            >
               Nombre Completo
             </label>
             <Input
+              id="login-field-1"
               placeholder="Prof. Juan Rodríguez"
               value={regName}
               onChange={(e) => setRegName(e.target.value)}
@@ -198,10 +206,14 @@ export function Login() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1"
+              htmlFor="login-field-2"
+            >
               Nombre de Usuario Deseado
             </label>
             <Input
+              id="login-field-2"
               placeholder="juan.rodriguez"
               value={regUsername}
               onChange={(e) => setRegUsername(e.target.value)}
@@ -210,10 +222,14 @@ export function Login() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1"
+              htmlFor="login-field-3"
+            >
               Correo Electrónico de Contacto
             </label>
             <Input
+              id="login-field-3"
               type="email"
               placeholder="juan@colegio.edu"
               value={regEmail}
@@ -223,10 +239,14 @@ export function Login() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1"
+              htmlFor="login-field-4"
+            >
               Contraseña
             </label>
             <Input
+              id="login-field-4"
               type="password"
               placeholder="••••••••"
               value={regPassword}
@@ -236,10 +256,14 @@ export function Login() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1"
+              htmlFor="login-field-5"
+            >
               Institución Educativa / Motivo
             </label>
             <Input
+              id="login-field-5"
               placeholder="Colegio San Martín - 5to Grado"
               value={regReason}
               onChange={(e) => setRegReason(e.target.value)}
@@ -247,20 +271,20 @@ export function Login() {
           </div>
 
           {regSuccessMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-success-soft/70 border border-emerald-800 text-success text-xs">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{regSuccessMessage}</span>
             </div>
           )}
 
           {regErrorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-950/70 border border-rose-800 text-rose-300 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-danger-soft/70 border border-rose-800 text-danger text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{regErrorMessage}</span>
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
             <Button type="button" variant="ghost" onClick={() => setIsRegisterOpen(false)}>
               Cerrar
             </Button>

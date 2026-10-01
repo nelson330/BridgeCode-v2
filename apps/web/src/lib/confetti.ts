@@ -2,6 +2,7 @@ import confetti from 'canvas-confetti'
 
 export function triggerConfetti(options?: confetti.Options) {
   confetti({
+    disableForReducedMotion: true,
     particleCount: 80,
     spread: 70,
     origin: { y: 0.6 },
@@ -11,6 +12,7 @@ export function triggerConfetti(options?: confetti.Options) {
 }
 
 export function triggerFireworks() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   const duration = 2.5 * 1000
   const animationEnd = Date.now() + duration
   const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 }

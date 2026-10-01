@@ -1,5 +1,5 @@
-import { BarChart3, CheckCircle2, Clock, Users, XCircle } from 'lucide-react'
 import { motion } from 'motion/react'
+import { BarChart3, CheckCircle2, Clock, Users, XCircle } from '../../lib/icons'
 
 interface AnswerDistributionChartProps {
   distribution: Array<{ optionIndex: number; count: number; label?: string }>
@@ -22,20 +22,20 @@ export function AnswerDistributionChart({ distribution, stats }: AnswerDistribut
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-xl p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4"
+      className="w-full max-w-xl p-6 rounded-2xl bg-surface/90 border border-line shadow-xl space-y-4"
     >
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5">
           <BarChart3 className="w-4 h-4" />
           Distribución de Respuestas
         </h3>
         {stats && (
           <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1 text-emerald-400 font-bold">
+            <span className="flex items-center gap-1 text-success font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               {stats.accuracyPercent}%
             </span>
-            <span className="flex items-center gap-1 text-slate-400">
+            <span className="flex items-center gap-1 text-muted">
               <Clock className="w-3.5 h-3.5" />
               {(stats.avgLatencyMs / 1000).toFixed(1)}s
             </span>
@@ -51,19 +51,19 @@ export function AnswerDistributionChart({ distribution, stats }: AnswerDistribut
 
           return (
             <div key={d.optionIndex} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-white shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-elevated border border-line flex items-center justify-center text-sm font-bold text-foreground shrink-0">
                 {OPTION_ICONS[d.optionIndex] || String.fromCharCode(65 + d.optionIndex)}
               </div>
               <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-300 font-semibold truncate max-w-[200px]">
+                  <span className="text-secondary font-semibold truncate max-w-[200px]">
                     {d.label || `Opción ${d.optionIndex + 1}`}
                   </span>
-                  <span className="text-slate-400 font-bold">
+                  <span className="text-muted font-bold">
                     {d.count} ({pct}%)
                   </span>
                 </div>
-                <div className="h-6 rounded-lg bg-slate-800 overflow-hidden">
+                <div className="h-6 rounded-lg bg-elevated overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${barWidth}%` }}
@@ -79,13 +79,13 @@ export function AnswerDistributionChart({ distribution, stats }: AnswerDistribut
 
       {/* Stats footer */}
       {stats && (
-        <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
+        <div className="flex items-center justify-between pt-3 border-t border-line text-xs text-muted">
           <span className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5" />
             {stats.correctCount} correctas de {stats.totalCount} respuestas
           </span>
           <span className="flex items-center gap-1">
-            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+            <XCircle className="w-3.5 h-3.5 text-danger" />
             {stats.totalCount - stats.correctCount} incorrectas
           </span>
         </div>

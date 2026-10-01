@@ -1,3 +1,8 @@
+import { useEffect, useState } from 'react'
+import { apiFetch } from '../../lib/api'
+import { sound } from '../../lib/audio-synth'
+import { triggerConfetti } from '../../lib/confetti'
+import { notify } from '../../lib/feedback'
 import {
   AlignLeft,
   Award,
@@ -16,14 +21,11 @@ import {
   Trash2,
   Type,
   X,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { apiFetch } from '../../lib/api'
-import { sound } from '../../lib/audio-synth'
-import { triggerConfetti } from '../../lib/confetti'
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { FormError } from '../ui/FormError'
 import { Input } from '../ui/Input'
 import { CustomSelect } from '../ui/Select'
 
@@ -132,6 +134,7 @@ export function ExerciseBuilderModal({
   exerciseToEdit,
   onExerciseCreated,
 }: ExerciseBuilderModalProps) {
+  const [formError, setFormError] = useState<string | null>(null)
   const [type, setType] = useState<ExerciseType>('mc')
   const [prompt, setPrompt] = useState('')
   const [explanation, setExplanation] = useState('')
@@ -272,6 +275,7 @@ export function ExerciseBuilderModal({
 
   const handleSaveExercise = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     if (!prompt.trim() || !lessonId) return
 
     setIsSaving(true)
@@ -283,7 +287,7 @@ export function ExerciseBuilderModal({
       if (type === 'mc' || type === 'poll') {
         const validOptions = mcOptions.filter((opt) => opt.trim() !== '')
         if (validOptions.length < 2) {
-          alert('Debes ingresar al menos 2 opciones válidas')
+          setFormError('Debes ingresar al menos 2 opciones válidas')
           setIsSaving(false)
           return
         }
@@ -302,7 +306,7 @@ export function ExerciseBuilderModal({
           .map((w) => w.trim())
           .filter(Boolean)
         if (validWords.length === 0) {
-          alert('Ingresa al menos una palabra o respuesta correcta')
+          setFormError('Ingresa al menos una palabra o respuesta correcta')
           setIsSaving(false)
           return
         }
@@ -339,7 +343,7 @@ export function ExerciseBuilderModal({
           .map((w) => w.trim())
           .filter(Boolean)
         if (validAnswers.length === 0) {
-          alert('Ingresa al menos una respuesta válida')
+          setFormError('Ingresa al menos una respuesta válida')
           setIsSaving(false)
           return
         }
@@ -419,7 +423,7 @@ export function ExerciseBuilderModal({
       setMcCorrectIndex(0)
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al guardar el ejercicio')
+      setFormError(err.message || 'Error al guardar el ejercicio')
     } finally {
       setIsSaving(false)
     }
@@ -438,9 +442,10 @@ export function ExerciseBuilderModal({
       className="max-w-3xl"
     >
       <form onSubmit={handleSaveExercise} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+        <FormError message={formError} />
         {/* Type Selector Tabs */}
         <div className="space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted block">
             1. Selecciona el Tipo de Ejercicio
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -454,15 +459,15 @@ export function ExerciseBuilderModal({
                   onClick={() => setType(t.id)}
                   className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
                     isSelected
-                      ? 'border-indigo-500 bg-indigo-950/60 ring-2 ring-indigo-500/30'
-                      : 'border-slate-800 bg-slate-950/80 hover:border-slate-700'
+                      ? 'border-indigo-500 bg-accent-soft/60 ring-2 ring-indigo-500/30'
+                      : 'border-line bg-canvas/80 hover:border-line'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-indigo-400' : 'text-slate-400'}`} />
-                    <span className="font-bold text-xs text-white">{t.label}</span>
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-accent' : 'text-muted'}`} />
+                    <span className="font-bold text-xs text-foreground">{t.label}</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 line-clamp-1">{t.description}</p>
+                  <p className="text-[10px] text-muted line-clamp-1">{t.description}</p>
                 </button>
               )
             })}
@@ -471,8 +476,11 @@ export function ExerciseBuilderModal({
 
         {/* Prompt */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Enunciado / Pregunta del Ejercicio</label>
+          <label className="text-xs font-semibold text-secondary" htmlFor="exercisebuildermodal-field-1">
+            Enunciado / Pregunta del Ejercicio
+          </label>
           <textarea
+            id="exercisebuildermodal-field-1"
             rows={2}
             placeholder={
               type === 'fill'
@@ -481,21 +489,21 @@ export function ExerciseBuilderModal({
             }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded-xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
         </div>
 
         {/* Dynamic Controls based on Type */}
-        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 block">
+        <div className="p-4 rounded-2xl bg-canvas/80 border border-line space-y-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-accent block">
             2. Configuración de Respuestas
           </span>
 
           {/* MC & POLL */}
           {(type === 'mc' || type === 'poll') && (
             <div className="space-y-3">
-              <span className="text-[11px] text-slate-400 block">
+              <span className="text-[11px] text-muted block">
                 Escribe las opciones y marca cuál es la respuesta correcta:
               </span>
               {mcOptions.map((opt, idx) => (
@@ -522,7 +530,7 @@ export function ExerciseBuilderModal({
                     <button
                       type="button"
                       onClick={() => handleRemoveMcOption(idx)}
-                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                      className="text-muted hover:text-danger p-1 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -548,15 +556,15 @@ export function ExerciseBuilderModal({
           {/* TF */}
           {type === 'tf' && (
             <div className="space-y-2">
-              <span className="text-xs text-slate-300 block">Respuesta Correcta:</span>
+              <span className="text-xs text-secondary block">Respuesta Correcta:</span>
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setTfIsTrue(true)}
                   className={`flex-1 p-3 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
                     tfIsTrue
-                      ? 'bg-emerald-950 border-emerald-500 text-emerald-300 ring-2 ring-emerald-500/20'
-                      : 'bg-slate-900 border-slate-700 text-slate-400'
+                      ? 'bg-success-soft border-emerald-500 text-success ring-2 ring-emerald-500/20'
+                      : 'bg-surface border-line text-muted'
                   }`}
                 >
                   Verdadero
@@ -566,8 +574,8 @@ export function ExerciseBuilderModal({
                   onClick={() => setTfIsTrue(false)}
                   className={`flex-1 p-3 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
                     !tfIsTrue
-                      ? 'bg-rose-950 border-rose-500 text-rose-300 ring-2 ring-rose-500/20'
-                      : 'bg-slate-900 border-slate-700 text-slate-400'
+                      ? 'bg-danger-soft border-rose-500 text-danger ring-2 ring-rose-500/20'
+                      : 'bg-surface border-line text-muted'
                   }`}
                 >
                   Falso
@@ -580,10 +588,14 @@ export function ExerciseBuilderModal({
           {type === 'fill' && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 block font-semibold">
+                <label
+                  className="text-xs text-secondary block font-semibold"
+                  htmlFor="exercisebuildermodal-field-2"
+                >
                   Palabra(s) Correcta(s) (la que completa el espacio [___]):
                 </label>
                 <Input
+                  id="exercisebuildermodal-field-2"
                   placeholder="Ej: fotosíntesis, fotosintesis"
                   value={fillAnswers}
                   onChange={(e) => setFillAnswers(e.target.value)}
@@ -593,16 +605,20 @@ export function ExerciseBuilderModal({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 block font-semibold">
+                <label
+                  className="text-xs text-secondary block font-semibold"
+                  htmlFor="exercisebuildermodal-field-3"
+                >
                   Opciones de Distracción / Otras palabras para elegir (separadas por comas):
                 </label>
                 <Input
+                  id="exercisebuildermodal-field-3"
                   placeholder="Ej: respiración, digestión, combustión"
                   value={fillDistractors}
                   onChange={(e) => setFillDistractors(e.target.value)}
                   className="text-xs"
                 />
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px] text-muted">
                   Los alumnos verán estas palabras y la correcta como botones barajados para seleccionar sin
                   tener que escribir.
                 </p>
@@ -613,10 +629,11 @@ export function ExerciseBuilderModal({
           {/* SHORT */}
           {type === 'short' && (
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-300 block">
+              <label className="text-xs text-secondary block" htmlFor="exercisebuildermodal-field-4">
                 Palabras o Frases Aceptadas (separadas por comas):
               </label>
               <Input
+                id="exercisebuildermodal-field-4"
                 placeholder="Ej: fotosíntesis, fotosintesis, FOTOSINTESIS"
                 value={fillAnswers}
                 onChange={(e) => setFillAnswers(e.target.value)}
@@ -629,7 +646,7 @@ export function ExerciseBuilderModal({
           {/* ORDER */}
           {type === 'order' && (
             <div className="space-y-2">
-              <span className="text-xs text-slate-300 block">
+              <span className="text-xs text-secondary block">
                 Escribe los pasos en el <b>orden correcto</b> (el juego los mezclará al proyectar):
               </span>
               {orderItems.map((step, idx) => (
@@ -665,7 +682,7 @@ export function ExerciseBuilderModal({
           {/* MATCH */}
           {type === 'match' && (
             <div className="space-y-2">
-              <span className="text-xs text-slate-300 block">Define los pares de Concepto y Definición:</span>
+              <span className="text-xs text-secondary block">Define los pares de Concepto y Definición:</span>
               {matchPairs.map((pair, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <Input
@@ -681,7 +698,7 @@ export function ExerciseBuilderModal({
                     required
                     className="text-xs"
                   />
-                  <span className="text-slate-500">↔</span>
+                  <span className="text-muted">↔</span>
                   <Input
                     placeholder="Definición / Término"
                     value={pair.right}
@@ -712,7 +729,7 @@ export function ExerciseBuilderModal({
 
           {/* OPEN */}
           {type === 'open' && (
-            <p className="text-xs text-slate-400 italic">
+            <p className="text-xs text-muted italic">
               Las preguntas abiertas permiten a los estudiantes redactar libremente sus respuestas para debate
               o revisión en clase.
             </p>
@@ -721,10 +738,11 @@ export function ExerciseBuilderModal({
           {/* TYPE ANSWER */}
           {type === 'type_answer' && (
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-300 block">
+              <label className="text-xs text-secondary block" htmlFor="exercisebuildermodal-field-5">
                 Respuestas Aceptadas (separadas por comas, sin importar mayúsculas):
               </label>
               <Input
+                id="exercisebuildermodal-field-5"
                 placeholder="Ej: fotosíntesis, Fotosintesis, FOTOSÍNTESIS"
                 value={fillAnswers}
                 onChange={(e) => setFillAnswers(e.target.value)}
@@ -738,8 +756,11 @@ export function ExerciseBuilderModal({
           {type === 'slider' && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Valor Mínimo</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-6">
+                  Valor Mínimo
+                </label>
                 <Input
+                  id="exercisebuildermodal-field-6"
                   type="number"
                   value={sliderMin}
                   onChange={(e) => setSliderMin(Number(e.target.value))}
@@ -747,8 +768,11 @@ export function ExerciseBuilderModal({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Valor Máximo</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-7">
+                  Valor Máximo
+                </label>
                 <Input
+                  id="exercisebuildermodal-field-7"
                   type="number"
                   value={sliderMax}
                   onChange={(e) => setSliderMax(Number(e.target.value))}
@@ -756,8 +780,11 @@ export function ExerciseBuilderModal({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Respuesta Correcta</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-8">
+                  Respuesta Correcta
+                </label>
                 <Input
+                  id="exercisebuildermodal-field-8"
                   type="number"
                   value={sliderCorrect}
                   onChange={(e) => setSliderCorrect(Number(e.target.value))}
@@ -765,8 +792,11 @@ export function ExerciseBuilderModal({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Tolerancia (±)</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-9">
+                  Tolerancia (±)
+                </label>
                 <Input
+                  id="exercisebuildermodal-field-9"
                   type="number"
                   value={sliderTolerance}
                   onChange={(e) => setSliderTolerance(Number(e.target.value))}
@@ -780,8 +810,11 @@ export function ExerciseBuilderModal({
           {type === 'pin_drop' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">URL de la Imagen</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-10">
+                  URL de la Imagen
+                </label>
                 <Input
+                  id="exercisebuildermodal-field-10"
                   type="url"
                   placeholder="https://..."
                   value={pinImageUrl}
@@ -791,8 +824,11 @@ export function ExerciseBuilderModal({
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">Coordenada X correcta</label>
+                  <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-11">
+                    Coordenada X correcta
+                  </label>
                   <Input
+                    id="exercisebuildermodal-field-11"
                     type="number"
                     value={pinCorrectX}
                     onChange={(e) => setPinCorrectX(Number(e.target.value))}
@@ -800,8 +836,11 @@ export function ExerciseBuilderModal({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">Coordenada Y correcta</label>
+                  <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-12">
+                    Coordenada Y correcta
+                  </label>
                   <Input
+                    id="exercisebuildermodal-field-12"
                     type="number"
                     value={pinCorrectY}
                     onChange={(e) => setPinCorrectY(Number(e.target.value))}
@@ -809,8 +848,11 @@ export function ExerciseBuilderModal({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">Tolerancia (px)</label>
+                  <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-13">
+                    Tolerancia (px)
+                  </label>
                   <Input
+                    id="exercisebuildermodal-field-13"
                     type="number"
                     value={pinTolerance}
                     onChange={(e) => setPinTolerance(Number(e.target.value))}
@@ -824,18 +866,17 @@ export function ExerciseBuilderModal({
           {/* WORD CLOUD */}
           {type === 'word_cloud' && (
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-300 block">
+              <label className="text-xs text-secondary block" htmlFor="exercisebuildermodal-field-14">
                 Palabras de muestra esperadas (separadas por comas, opcional):
               </label>
               <Input
+                id="exercisebuildermodal-field-14"
                 placeholder="Ej: célula, mitocondria, ADN, núcleo"
                 value={cloudSampleWords}
                 onChange={(e) => setCloudSampleWords(e.target.value)}
                 className="text-xs"
               />
-              <p className="text-[10px] text-slate-500">
-                La nube de palabras no tiene puntuación competitiva.
-              </p>
+              <p className="text-[10px] text-muted">La nube de palabras no tiene puntuación competitiva.</p>
             </div>
           )}
 
@@ -843,17 +884,22 @@ export function ExerciseBuilderModal({
           {type === 'slide' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Contenido de la diapositiva</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-15">
+                  Contenido de la diapositiva
+                </label>
                 <textarea
+                  id="exercisebuildermodal-field-15"
                   rows={3}
                   placeholder="Texto informativo que se mostrará entre preguntas..."
                   value={slideContent}
                   onChange={(e) => setSlideContent(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full p-3 rounded-xl bg-surface border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">Duración (segundos)</label>
+                <label className="text-[11px] text-muted" htmlFor="exercisebuildermodal-field-16">
+                  Duración (segundos)
+                </label>
                 <CustomSelect
                   value={slideDuration}
                   onChange={(val) => setSlideDuration(Number(val))}
@@ -872,8 +918,8 @@ export function ExerciseBuilderModal({
         {/* Pedagogical Metadata (Points, Time, Multiplier, Explanation) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-amber-400" />
+            <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+              <Award className="w-3.5 h-3.5 text-warning" />
               Puntaje del Ejercicio
             </label>
             <CustomSelect
@@ -889,8 +935,8 @@ export function ExerciseBuilderModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-accent" />
               Tiempo Límite
             </label>
             <CustomSelect
@@ -906,8 +952,8 @@ export function ExerciseBuilderModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-warning" />
               Multiplicador
             </label>
             <CustomSelect
@@ -925,11 +971,12 @@ export function ExerciseBuilderModal({
 
         {/* Feedback / Explanation */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
+          <label className="text-xs font-semibold text-secondary flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             Explicación Pedagógica (Feedback al responder)
           </label>
           <Input
+            id="exercisebuildermodal-field-16"
             placeholder="Ej: La fotosíntesis ocurre en los cloroplastos utilizando luz solar y clorofila."
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
@@ -938,7 +985,7 @@ export function ExerciseBuilderModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+        <div className="flex justify-end gap-2 pt-3 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

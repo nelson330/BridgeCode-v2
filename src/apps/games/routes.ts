@@ -28,6 +28,10 @@ gameRoutes.post('/sessions/:id/start', requireAuth(), requireRole('teacher', 'we
   return c.json(result)
 })
 
+gameRoutes.post('/sessions/:id/reveal', requireAuth(), requireRole('teacher', 'webmaster'), async (c) => {
+  return c.json(await GamesService.revealExercise(c.get('user').id, c.req.param('id')))
+})
+
 gameRoutes.post('/sessions/:id/next', requireAuth(), requireRole('teacher', 'webmaster'), async (c) => {
   const user = c.get('user')
   const sessionId = c.req.param('id')

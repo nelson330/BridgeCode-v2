@@ -1,9 +1,9 @@
-import { AlertCircle, Bot, CheckCircle2, Key, RefreshCw, Save, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
 import { triggerConfetti } from '../../lib/confetti'
+import { AlertCircle, Bot, CheckCircle2, Key, RefreshCw, Save, ShieldCheck, Sparkles } from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -99,8 +99,11 @@ export function AiSettingsTab() {
           setModel(target.selectedModel || target.defaultModel)
         }
       }
-    } catch {
-      // ignore
+    } catch (error: any) {
+      setStatusMessage({
+        type: 'error',
+        text: error.message || 'No se pudo cargar la configuración. Puedes reintentar la carga.',
+      })
     }
   }
 
@@ -191,14 +194,14 @@ export function AiSettingsTab() {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Banner */}
-      <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
+      <div className="p-6 rounded-3xl bg-surface/80 border border-line space-y-2">
         <div className="flex items-center gap-2">
-          <Bot className="w-6 h-6 text-indigo-400" />
-          <h2 className="font-display font-black text-2xl text-white">
+          <Bot className="w-6 h-6 text-accent" />
+          <h2 className="font-display font-black text-2xl text-foreground">
             Configuración del Motor de IA Multi-Proveedor
           </h2>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted">
           Configura tus llaves de API (cifradas en base de datos con AES-256-GCM) para habilitar la generación
           pedagógica de 8 tipos de ejercicios desde cualquier apunte o texto.
         </p>
@@ -207,7 +210,7 @@ export function AiSettingsTab() {
       {/* Provider Cards Selector */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted block">
             1. Selecciona el Proveedor de IA
           </span>
           <div className="w-full sm:w-72">
@@ -232,13 +235,11 @@ export function AiSettingsTab() {
                 hoverEffect
                 onClick={() => handleProviderSelect(p.id)}
                 className={`p-4 cursor-pointer text-left space-y-2 transition-all ${
-                  isSelected
-                    ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-950/20'
-                    : 'border-slate-800'
+                  isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-accent-soft/20' : 'border-line'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-white">{p.name.split(' ')[0]}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-sm text-foreground">{p.name.split(' ')[0]}</span>
                   {isConfig && (
                     <Badge variant="success" className="text-[10px] px-1.5 py-0 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
@@ -246,7 +247,7 @@ export function AiSettingsTab() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1">{p.defaultModel}</p>
+                <p className="text-[11px] text-muted line-clamp-1">{p.defaultModel}</p>
               </Card>
             )
           })}
@@ -254,24 +255,24 @@ export function AiSettingsTab() {
       </div>
 
       {/* Provider Details & API Key Form */}
-      <Card className="space-y-5 p-6 border-slate-800">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <Card className="space-y-5 p-6 border-line">
+        <div className="flex items-center justify-between border-b border-line pb-3">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-white text-base">
+              <h3 className="font-bold text-foreground text-base">
                 Ajustes de {activeProv?.name || selectedProvider}
               </h3>
               {isProvConfigured && (
                 <Badge variant="success" className="text-[10px] px-2 py-0.5">
-                  ✓ Clave Guardada
+                  Clave Guardada
                 </Badge>
               )}
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted">
               Servidor base: {activeProv?.baseUrl || 'https://api.groq.com/openai/v1'}
             </span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-emerald-400">
+          <div className="flex items-center gap-1 text-xs text-success">
             <ShieldCheck className="w-4 h-4" />
             <span>Cifrado AES-256-GCM</span>
           </div>
@@ -279,8 +280,8 @@ export function AiSettingsTab() {
 
         {/* API Key Input */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-            <Key className="w-3.5 h-3.5 text-amber-400" />
+          <label className="text-xs font-semibold text-secondary flex items-center gap-1.5">
+            <Key className="w-3.5 h-3.5 text-warning" />
             Clave de API (API Key)
           </label>
           <div className="flex gap-2">
@@ -307,8 +308,8 @@ export function AiSettingsTab() {
             </Button>
           </div>
           {isProvConfigured && !apiKey && (
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-800/40">
-              <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+            <div className="flex items-center gap-1.5 text-[11px] text-success bg-success-soft/40 p-2.5 rounded-xl border border-emerald-800/40">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-success" />
               <span>
                 Tu clave de API ya está guardada y cifrada con AES-256-GCM en la base de datos. Solo ingresa
                 texto aquí si deseas actualizarla por una nueva.
@@ -319,7 +320,7 @@ export function AiSettingsTab() {
 
         {/* Model Selector / Display */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">
+          <label className="text-xs font-semibold text-secondary">
             Modelo por Defecto (
             {availableModels.length > 0 ? `${availableModels.length} disponibles` : 'Predeterminado'})
           </label>
@@ -348,18 +349,24 @@ export function AiSettingsTab() {
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl text-xs flex items-center gap-2 border ${
+            role={statusMessage.type === 'error' ? 'alert' : 'status'}
+            className={`p-4 rounded-xl text-xs flex flex-wrap items-center gap-2 border ${
               statusMessage.type === 'success'
-                ? 'bg-emerald-950/70 border-emerald-800 text-emerald-300'
-                : 'bg-rose-950/70 border-rose-800 text-rose-300'
+                ? 'bg-success-soft/70 border-emerald-800 text-success'
+                : 'bg-danger-soft/70 border-rose-800 text-danger'
             }`}
           >
             {statusMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />
             ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-danger" />
             )}
-            <span>{statusMessage.text}</span>
+            <span className="flex-1">{statusMessage.text}</span>
+            {statusMessage.type === 'error' && (
+              <Button variant="secondary" size="sm" onClick={() => loadProviders(true)}>
+                Reintentar carga
+              </Button>
+            )}
           </motion.div>
         )}
 

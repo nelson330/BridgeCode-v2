@@ -1,3 +1,8 @@
+import { useEffect, useRef, useState } from 'react'
+import { apiFetch } from '../../lib/api'
+import { sound } from '../../lib/audio-synth'
+import { triggerConfetti } from '../../lib/confetti'
+import { notify } from '../../lib/feedback'
 import {
   AlertCircle,
   BookOpen,
@@ -12,11 +17,7 @@ import {
   Trash2,
   Upload,
   X,
-} from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { apiFetch } from '../../lib/api'
-import { sound } from '../../lib/audio-synth'
-import { triggerConfetti } from '../../lib/confetti'
+} from '../../lib/icons'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import { Input } from '../ui/Input'
@@ -136,7 +137,7 @@ export function LessonModal({
 
       sound.playPowerup()
     } catch (err: any) {
-      alert(err.message || 'Error al subir archivo')
+      notify(err.message || 'Error al subir archivo')
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -263,8 +264,11 @@ export function LessonModal({
     >
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
         {formError && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2.5 text-xs text-rose-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div
+            role="alert"
+            className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2.5 text-xs text-danger"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 text-danger" />
             <span>{formError}</span>
           </div>
         )}
@@ -272,7 +276,10 @@ export function LessonModal({
         <div className="space-y-4">
           {classes.length > 1 && (
             <div>
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+              <label
+                className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+                htmlFor="lessonmodal-field-1"
+              >
                 Clase de Destino
               </label>
               <CustomSelect
@@ -287,10 +294,11 @@ export function LessonModal({
           )}
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5">
               Título de la Lección
             </label>
             <Input
+              id="lessonmodal-field-1"
               placeholder="Ej: El Sistema Solar y los Planetas"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -300,14 +308,14 @@ export function LessonModal({
           </div>
 
           {/* Media & PDF Upload Zone with AI Summarize trigger */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
+          <div className="p-4 rounded-2xl bg-canvas border border-line/80 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Upload className="w-4 h-4 text-indigo-400" />
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-accent" />
                   <span>Subir Documentos PDF e Imágenes de Estudio</span>
                 </h4>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted">
                   Sube el PDF de la clase para que la IA extraiga el texto y redacte el resumen.
                 </p>
               </div>
@@ -341,7 +349,7 @@ export function LessonModal({
                     size="sm"
                     disabled={uploading || summarizing}
                     onClick={handleGenerateSummary}
-                    className="gap-1.5 text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                    className="gap-1.5 text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-on-accent shadow-md shadow-indigo-500/20"
                   >
                     {summarizing ? (
                       <>
@@ -350,7 +358,7 @@ export function LessonModal({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <Sparkles className="w-3.5 h-3.5 text-warning" />
                         <span>Generar Resumen con IA del PDF</span>
                       </>
                     )}
@@ -361,22 +369,22 @@ export function LessonModal({
 
             {/* Uploaded Attachments List */}
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-900">
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-line">
                 {attachments.map((att, idx) => (
                   <div
                     key={att.url}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-foreground"
                   >
                     {att.type === 'pdf' ? (
-                      <FileText className="w-4 h-4 text-rose-400 shrink-0" />
+                      <FileText className="w-4 h-4 text-danger shrink-0" />
                     ) : (
-                      <ImageIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <ImageIcon className="w-4 h-4 text-success shrink-0" />
                     )}
                     <span className="font-semibold max-w-[180px] truncate">{att.name}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveAttachment(idx)}
-                      className="text-slate-500 hover:text-rose-400 p-0.5"
+                      className="text-muted hover:text-danger p-0.5"
                       title="Eliminar adjunto"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -388,9 +396,9 @@ export function LessonModal({
 
             {/* Error banner for AI Summary with direct retry */}
             {summaryError && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-danger-soft/60 border border-rose-800/80 text-danger text-xs">
                 <div className="flex items-start gap-2 min-w-0">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
                   <span className="leading-tight">{summaryError}</span>
                 </div>
                 <Button
@@ -399,7 +407,7 @@ export function LessonModal({
                   size="sm"
                   onClick={handleGenerateSummary}
                   disabled={summarizing}
-                  className="shrink-0 gap-1 text-[11px] text-rose-200 border-rose-700/60 hover:bg-rose-900/40"
+                  className="shrink-0 gap-1 text-[11px] text-danger border-rose-700/60 hover:bg-rose-900/40"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>Reintentar</span>
@@ -412,23 +420,23 @@ export function LessonModal({
           <div className="space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="space-y-0.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                <label className="text-xs font-bold text-secondary uppercase tracking-wider block">
                   Material de Lectura, Apuntes y Resumen de la Clase
                 </label>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-muted">
                   Soporta Markdown en tiempo real (# Títulos, **negrita**, - listas, `código`)
                 </span>
               </div>
 
               {/* Real-time View Toggle Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-slate-950 border border-slate-800 rounded-xl shrink-0 self-start sm:self-auto">
+              <div className="flex items-center gap-1 p-1 bg-canvas border border-line rounded-xl shrink-0 self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setActiveEditorTab('write')}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeEditorTab === 'write'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-600 text-on-accent shadow-sm'
+                      : 'text-muted hover:text-foreground'
                   }`}
                 >
                   <PenTool className="w-3.5 h-3.5" />
@@ -439,8 +447,8 @@ export function LessonModal({
                   onClick={() => setActiveEditorTab('preview')}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     activeEditorTab === 'preview'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-600 text-on-accent shadow-sm'
+                      : 'text-muted hover:text-foreground'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -451,8 +459,8 @@ export function LessonModal({
                   onClick={() => setActiveEditorTab('split')}
                   className={`hidden md:flex px-3 py-1 rounded-lg text-xs font-bold transition-all items-center gap-1.5 cursor-pointer ${
                     activeEditorTab === 'split'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-indigo-600 text-on-accent shadow-sm'
+                      : 'text-muted hover:text-foreground'
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
@@ -471,9 +479,9 @@ export function LessonModal({
                     value={materialContent}
                     onChange={(e) => setMaterialContent(e.target.value)}
                     placeholder="Escribe aquí los apuntes de la clase o haz clic en 'Generar Resumen con IA del PDF'..."
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed resize-y"
+                    className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-sm text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed resize-y"
                   />
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted px-1">
                     <span>{materialContent.length} caracteres</span>
                     <span>Cambia a 'Vista Previa en Vivo' para ver el Markdown renderizado</span>
                   </div>
@@ -482,14 +490,14 @@ export function LessonModal({
 
               {/* Preview Mode */}
               {activeEditorTab === 'preview' && (
-                <div className="min-h-[220px] max-h-[350px] overflow-y-auto p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="min-h-[220px] max-h-[350px] overflow-y-auto p-5 rounded-2xl bg-canvas border border-line space-y-3">
                   {materialContent.trim() ? (
                     <MarkdownText
                       content={materialContent}
-                      className="text-sm text-slate-200 leading-relaxed"
+                      className="text-sm text-foreground leading-relaxed"
                     />
                   ) : (
-                    <div className="text-center py-10 text-slate-500 text-xs italic">
+                    <div className="text-center py-10 text-muted text-xs italic">
                       No hay contenido redactado todavía. Escribe en el editor o genera el resumen desde un
                       PDF.
                     </div>
@@ -505,13 +513,13 @@ export function LessonModal({
                     value={materialContent}
                     onChange={(e) => setMaterialContent(e.target.value)}
                     placeholder="Escribe Markdown aquí..."
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed"
+                    className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono leading-relaxed"
                   />
-                  <div className="max-h-[280px] overflow-y-auto p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 leading-relaxed">
+                  <div className="max-h-[280px] overflow-y-auto p-4 rounded-2xl bg-canvas border border-line text-xs text-foreground leading-relaxed">
                     {materialContent.trim() ? (
-                      <MarkdownText content={materialContent} className="text-xs text-slate-200" />
+                      <MarkdownText content={materialContent} className="text-xs text-foreground" />
                     ) : (
-                      <span className="text-slate-500 italic">Vista previa en tiempo real...</span>
+                      <span className="text-muted italic">Vista previa en tiempo real...</span>
                     )}
                   </div>
                 </div>
@@ -520,9 +528,9 @@ export function LessonModal({
           </div>
 
           {/* External Links Section */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <LinkIcon className="w-4 h-4 text-indigo-400" />
+          <div className="p-4 rounded-2xl bg-canvas border border-line/80 space-y-3">
+            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <LinkIcon className="w-4 h-4 text-accent" />
               <span>Compartir Enlaces Web de Interés</span>
             </h4>
 
@@ -554,7 +562,7 @@ export function LessonModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>

@@ -6,7 +6,7 @@ import { createHttpApp } from '../../src/core/http/app'
 
 describe('Social Wall, Homework, Analytics & Webmaster Admin (Fase 5)', () => {
   beforeEach(() => {
-    loadConfig({ MODE: 'local' })
+    loadConfig({})
     initDb(':memory:')
   })
 

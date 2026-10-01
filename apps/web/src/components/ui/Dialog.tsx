@@ -1,7 +1,7 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { ReactNode } from 'react'
+import { X } from '../../lib/icons'
 import { cn } from './Button'
 
 interface DialogProps {
@@ -12,7 +12,6 @@ interface DialogProps {
   children: ReactNode
   className?: string
 }
-
 export function Dialog({ open, onOpenChange, title, description, children, className }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -24,41 +23,42 @@ export function Dialog({ open, onOpenChange, title, description, children, class
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm"
+                className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm"
               />
             </DialogPrimitive.Overlay>
-
-            <DialogPrimitive.Content asChild>
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 pointer-events-none">
+              <DialogPrimitive.Content asChild>
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
                   className={cn(
-                    'relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-4 sm:p-6 max-h-[90vh] overflow-y-auto shadow-2xl text-slate-100 focus:outline-none',
+                    'pointer-events-auto relative w-full max-w-lg rounded-2xl bg-surface border border-line p-4 sm:p-6 max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain shadow-2xl text-foreground',
                     className
                   )}
                 >
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                    <div>
-                      <DialogPrimitive.Title className="font-display font-bold text-xl text-white">
+                  <div className="flex items-start justify-between gap-3 pb-4 border-b border-line">
+                    <div className="min-w-0">
+                      <DialogPrimitive.Title className="font-display font-bold text-xl text-foreground">
                         {title}
                       </DialogPrimitive.Title>
-                      {description && (
-                        <DialogPrimitive.Description className="text-sm text-slate-400 mt-1">
-                          {description}
-                        </DialogPrimitive.Description>
-                      )}
+                      <DialogPrimitive.Description
+                        className={description ? 'text-sm text-muted mt-2 leading-relaxed' : 'sr-only'}
+                      >
+                        {description || title}
+                      </DialogPrimitive.Description>
                     </div>
-                    <DialogPrimitive.Close className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <DialogPrimitive.Close
+                      aria-label="Cerrar diálogo"
+                      className="shrink-0 rounded-xl p-3 text-muted hover:text-foreground hover:bg-elevated"
+                    >
                       <X className="w-5 h-5" />
                     </DialogPrimitive.Close>
                   </div>
-                  <div className="mt-4">{children}</div>
+                  <div className="mt-5">{children}</div>
                 </motion.div>
-              </div>
-            </DialogPrimitive.Content>
+              </DialogPrimitive.Content>
+            </div>
           </DialogPrimitive.Portal>
         )}
       </AnimatePresence>

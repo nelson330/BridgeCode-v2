@@ -1,8 +1,9 @@
-import { BookOpen, CheckCircle2, Share2, Sparkles, Tag } from 'lucide-react'
 import { useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
 import { triggerConfetti } from '../../lib/confetti'
+import { notify, notifySuccess } from '../../lib/feedback'
+import { BookOpen, CheckCircle2, Share2, Sparkles, Tag } from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
@@ -56,12 +57,12 @@ export function PublishToForumModal({
       triggerConfetti()
       if (onPublished) onPublished()
       onOpenChange(false)
-      alert('¡Lección publicada en la comunidad docente con éxito!')
+      notifySuccess('¡Lección publicada en la comunidad docente con éxito!')
       setTitle('')
       setDescription('')
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al publicar en el foro')
+      notify(err.message || 'Error al publicar en el foro')
     } finally {
       setIsPublishing(false)
     }
@@ -77,7 +78,9 @@ export function PublishToForumModal({
     >
       <form onSubmit={handlePublish} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Selecciona la Lección a Compartir</label>
+          <label className="text-xs font-semibold text-secondary" htmlFor="publishtoforummodal-field-1">
+            Selecciona la Lección a Compartir
+          </label>
           <CustomSelect
             value={lessonId}
             onChange={(val) => {
@@ -93,8 +96,9 @@ export function PublishToForumModal({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Título Público de la Publicación</label>
+          <label className="text-xs font-semibold text-secondary">Título Público de la Publicación</label>
           <Input
+            id="publishtoforummodal-field-1"
             placeholder="Ej: Trivia Completa del Sistema Solar y Planetas"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -104,24 +108,29 @@ export function PublishToForumModal({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">
+          <label className="text-xs font-semibold text-secondary" htmlFor="publishtoforummodal-field-2">
             Descripción / Recomendación Pedagógica
           </label>
           <textarea
+            id="publishtoforummodal-field-2"
             rows={3}
             placeholder="Describe para qué edades o grado está pensada, y cómo usarla en el aula..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded-xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-            <Tag className="w-3.5 h-3.5 text-indigo-400" />
+          <label
+            className="text-xs font-semibold text-secondary flex items-center gap-1"
+            htmlFor="publishtoforummodal-field-3"
+          >
+            <Tag className="w-3.5 h-3.5 text-accent" />
             Etiquetas / Tags (separadas por comas)
           </label>
           <Input
+            id="publishtoforummodal-field-3"
             placeholder="Ciencias, Astronomía, 5to Grado"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
@@ -129,7 +138,7 @@ export function PublishToForumModal({
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+        <div className="flex justify-end gap-2 pt-3 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

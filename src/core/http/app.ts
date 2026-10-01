@@ -71,22 +71,19 @@ export function createHttpApp() {
     return c.json({
       status: 'ok',
       version: '1.0.0',
-      mode: config.MODE,
       uptimeMs: Date.now() - startTime,
     })
   })
 
   app.get('/api/config', (c) => {
-    const isHosted = config.MODE === 'hosted'
     return c.json({
-      mode: config.MODE,
       locale: 'es',
       maxUploadMb: 25,
       flags: {
-        registerEnabled: isHosted,
-        forumEnabled: isHosted,
-        adminEnabled: isHosted,
-        studentAccounts: isHosted,
+        registerEnabled: true,
+        forumEnabled: true,
+        adminEnabled: true,
+        studentAccounts: true,
       },
     })
   })

@@ -1,6 +1,6 @@
 import type { ParticipantState } from '@shared/contracts/games'
-import { Crown, Medal, Trophy } from 'lucide-react'
 import { motion } from 'motion/react'
+import { Crown, Medal, Trophy } from '../../lib/icons'
 
 interface ScoreboardOverlayProps {
   leaderboard: ParticipantState[]
@@ -25,30 +25,30 @@ export function ScoreboardOverlay({ leaderboard, mode }: ScoreboardOverlayProps)
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-xl p-6 rounded-2xl bg-slate-900/90 border border-indigo-500/30 shadow-2xl space-y-4"
+      className="w-full max-w-xl p-6 rounded-2xl bg-surface/90 border border-indigo-500/30 shadow-2xl space-y-4"
     >
-      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5 text-center justify-center">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-1.5 text-center justify-center">
         <Trophy className="w-4 h-4" />
         Clasificación
       </h3>
 
       {/* Team scores for teams/battle mode */}
       {teamScores && (
-        <div className="grid grid-cols-2 gap-2 pb-3 border-b border-slate-800">
+        <div className="grid grid-cols-2 gap-2 pb-3 border-b border-line">
           {teamScores.map((ts) => (
             <div
               key={ts.team}
               className={`p-3 rounded-xl border-2 text-center ${
                 ts.team === teamScores[0]?.team
                   ? 'border-amber-400 bg-amber-500/10'
-                  : 'border-slate-700 bg-slate-800/50'
+                  : 'border-line bg-elevated/50'
               }`}
             >
               <div
                 className={`w-4 h-4 rounded-full ${TEAM_COLORS[ts.team] || 'bg-slate-500'} mx-auto mb-1`}
               />
-              <span className="text-xs font-bold text-white capitalize">{ts.team}</span>
-              <div className="font-display font-black text-lg text-white">{ts.score}</div>
+              <span className="text-xs font-bold text-foreground capitalize">{ts.team}</span>
+              <div className="font-display font-black text-lg text-foreground">{ts.score}</div>
             </div>
           ))}
         </div>
@@ -58,8 +58,8 @@ export function ScoreboardOverlay({ leaderboard, mode }: ScoreboardOverlayProps)
       <div className="space-y-2">
         {top5.map((p, idx) => {
           const rankIcons = [
-            <Crown key="crown" className="w-5 h-5 text-amber-400" />,
-            <Medal key="silver" className="w-5 h-5 text-slate-300" />,
+            <Crown key="crown" className="w-5 h-5 text-warning" />,
+            <Medal key="silver" className="w-5 h-5 text-secondary" />,
             <Medal key="bronze" className="w-5 h-5 text-amber-700" />,
           ]
 
@@ -70,19 +70,15 @@ export function ScoreboardOverlay({ leaderboard, mode }: ScoreboardOverlayProps)
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.1 }}
               className={`flex items-center gap-3 p-3 rounded-xl border ${
-                idx === 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800/50 border-slate-700'
+                idx === 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-elevated/50 border-line'
               }`}
             >
               <div className="w-8 flex items-center justify-center">
-                {idx < 3 ? (
-                  rankIcons[idx]
-                ) : (
-                  <span className="text-sm font-bold text-slate-500">#{idx + 1}</span>
-                )}
+                {idx < 3 ? rankIcons[idx] : <span className="text-sm font-bold text-muted">#{idx + 1}</span>}
               </div>
-              <span className="flex-1 font-bold text-white text-sm truncate">{p.displayName}</span>
+              <span className="flex-1 font-bold text-foreground text-sm truncate">{p.displayName}</span>
               {p.team && <div className={`w-3 h-3 rounded-full ${TEAM_COLORS[p.team] || 'bg-slate-500'}`} />}
-              <span className="font-display font-black text-indigo-400 text-sm">{p.score}</span>
+              <span className="font-display font-black text-accent text-sm">{p.score}</span>
             </motion.div>
           )
         })}

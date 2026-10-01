@@ -1,122 +1,96 @@
-import { ArrowRight, Gamepad2, Sparkles, User } from 'lucide-react'
-import { motion } from 'motion/react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { sound } from '../lib/audio-synth'
+import { ArrowRight, Bot, Bullseye, Cat, Dragon, Gamepad2, Gem, Rocket } from '../lib/icons'
 
-const AVATARS = ['🚀', '🦊', '⚡', '🐉', '🦁', '🌟', '🦄', '🤖', '👾', '🎯', '🔥', '💎']
-
+const avatars = [
+  { id: 'rocket', label: 'Cohete', icon: Rocket },
+  { id: 'cat', label: 'Gato', icon: Cat },
+  { id: 'dragon', label: 'Dragón', icon: Dragon },
+  { id: 'robot', label: 'Robot', icon: Bot },
+  { id: 'target', label: 'Diana', icon: Bullseye },
+  { id: 'gem', label: 'Gema', icon: Gem },
+]
 export function JoinGame() {
   const navigate = useNavigate()
-  const [pin, setPin] = useState('')
+  const [params] = useSearchParams()
+  const [pin, setPin] = useState(() => (params.get('pin') || '').replace(/\D/g, '').slice(0, 6))
   const [nickname, setNickname] = useState('')
-  const [selectedAvatar, setSelectedAvatar] = useState('🚀')
-
-  const handleJoin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!pin || !nickname) return
-
+  const [avatar, setAvatar] = useState('rocket')
+  const handleJoin = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (pin.length !== 6 || !nickname.trim()) return
     sound.playPowerup()
-    // Save nickname and avatar in sessionStorage for room persistence
-    sessionStorage.setItem('ap_nickname', `${selectedAvatar} ${nickname.trim()}`)
-    navigate(`/play/${pin.trim()}`)
+    sessionStorage.setItem('ap_nickname', nickname.trim())
+    sessionStorage.setItem('ap_avatar', avatar)
+    navigate(`/play/${pin}`)
   }
-
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md space-y-6"
-      >
-        <Card className="p-5 sm:p-8 shadow-2xl border-slate-800 bg-slate-900/90 backdrop-blur-xl">
-          <div className="text-center space-y-2 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-500 to-fuchsia-500 flex items-center justify-center mx-auto text-white shadow-lg shadow-indigo-500/30 mb-3">
-              <Gamepad2 className="w-8 h-8" />
-            </div>
-            <h2 className="font-display font-black text-3xl text-white">Unirse a la Sala</h2>
-            <p className="text-xs text-slate-400">
-              Ingresa el código PIN proyectado en la pantalla del profesor.
-            </p>
+    <div className="flex-1 flex items-center justify-center p-4 py-8">
+      <Card className="w-full max-w-md p-5 sm:p-8 space-y-6">
+        <div className="text-center space-y-3">
+          <Gamepad2 className="w-10 h-10 text-accent mx-auto" />
+          <h1 className="font-display font-black text-3xl text-foreground">Únete a la aventura</h1>
+          <p className="text-sm text-secondary">Escribe el PIN que aparece en la pantalla del docente.</p>
+        </div>
+        <form onSubmit={handleJoin} className="space-y-5">
+          <div className="space-y-2">
+            <label htmlFor="game-pin" className="text-sm font-semibold text-secondary">
+              Código PIN
+            </label>
+            <Input
+              id="game-pin"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              autoComplete="off"
+              maxLength={6}
+              placeholder="123456"
+              value={pin}
+              onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
+              className="text-center text-3xl sm:text-4xl font-black tracking-widest py-3"
+              required
+              autoFocus
+            />
           </div>
-
-          <form onSubmit={handleJoin} className="space-y-5">
-            {/* PIN Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 block text-center">
-                Código PIN (6 dígitos)
-              </label>
-              <Input
-                type="text"
-                maxLength={6}
-                placeholder="123456"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                className="text-center font-display font-black text-3xl sm:text-4xl tracking-widest text-indigo-300 py-3"
-                required
-                autoFocus
-              />
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-semibold text-secondary">Elige tu avatar</legend>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {avatars.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={avatar === id}
+                  onClick={() => setAvatar(id)}
+                  className={`min-h-12 flex items-center justify-center rounded-xl border p-3 ${avatar === id ? 'border-indigo-500 bg-accent-soft text-accent' : 'border-line bg-canvas text-secondary'}`}
+                >
+                  <Icon className="w-5 h-5" />
+                </button>
+              ))}
             </div>
-
-            {/* Avatar Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300 block">Elige tu Avatar</label>
-              <div className="grid grid-cols-6 gap-2">
-                {AVATARS.map((emoji) => {
-                  const isSelected = selectedAvatar === emoji
-                  return (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAvatar(emoji)
-                        sound.playWheelTick()
-                      }}
-                      className={`text-2xl p-2 rounded-xl border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-600/30 border-indigo-400 scale-110 shadow-lg'
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-600'
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Nickname Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                Tu Nombre o Apodo
-              </label>
-              <Input
-                type="text"
-                placeholder="Ej: Sofia García"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                maxLength={20}
-                required
-              />
-            </div>
-
-            <Button
-              type="submit"
-              variant="game"
-              size="xl"
-              disabled={pin.length < 4 || !nickname}
-              className="w-full gap-2 bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 text-white shadow-xl shadow-indigo-500/25"
-            >
-              <span>¡Entrar a Jugar!</span>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
-          </form>
-        </Card>
-      </motion.div>
+          </fieldset>
+          <div className="space-y-2">
+            <label htmlFor="game-nickname" className="text-sm font-semibold text-secondary">
+              Tu nombre o apodo
+            </label>
+            <Input
+              id="game-nickname"
+              placeholder="Sofía García"
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value)}
+              maxLength={30}
+              required
+            />
+          </div>
+          <Button type="submit" size="lg" disabled={pin.length !== 6 || !nickname.trim()} className="w-full">
+            Entrar a jugar
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </form>
+      </Card>
     </div>
   )
 }

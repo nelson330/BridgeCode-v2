@@ -61,6 +61,14 @@ export type WsClientMessage = z.infer<typeof WsClientMessageSchema>
 
 export const WsServerMessageSchema = z.discriminatedUnion('type', [
   z.object({
+    type: z.literal('SESSION_STATE'),
+    phase: z.enum(['lobby', 'countdown', 'question', 'result', 'finished']),
+    exerciseIndex: z.number(),
+    totalExercises: z.number(),
+    remainingSec: z.number(),
+    participants: z.array(ParticipantStateSchema),
+  }),
+  z.object({
     type: z.literal('ROOM_JOINED'),
     participantId: z.string(),
     mode: GameModeSchema,

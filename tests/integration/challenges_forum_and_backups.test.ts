@@ -6,7 +6,7 @@ import { createHttpApp } from '../../src/core/http/app'
 
 describe('Challenges, Forum & Backups (Fase 6)', () => {
   beforeEach(() => {
-    loadConfig({ MODE: 'local' })
+    loadConfig({})
     initDb(':memory:')
   })
 

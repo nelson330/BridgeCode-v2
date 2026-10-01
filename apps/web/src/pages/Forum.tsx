@@ -1,3 +1,17 @@
+import { motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import { PublishToForumModal } from '../components/forum/PublishToForumModal'
+import { AsyncState } from '../components/ui/AsyncState'
+import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Dialog } from '../components/ui/Dialog'
+import { Input } from '../components/ui/Input'
+import { CustomSelect } from '../components/ui/Select'
+import { apiFetch } from '../lib/api'
+import { sound } from '../lib/audio-synth'
+import { triggerConfetti } from '../lib/confetti'
+import { notify, notifySuccess } from '../lib/feedback'
 import {
   BookOpen,
   CheckCircle2,
@@ -8,25 +22,14 @@ import {
   Sparkles,
   Star,
   Tag,
-} from 'lucide-react'
-import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { PublishToForumModal } from '../components/forum/PublishToForumModal'
-import { Badge } from '../components/ui/Badge'
-import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
-import { Dialog } from '../components/ui/Dialog'
-import { Input } from '../components/ui/Input'
-import { CustomSelect } from '../components/ui/Select'
-import { apiFetch } from '../lib/api'
-import { sound } from '../lib/audio-synth'
-import { triggerConfetti } from '../lib/confetti'
+} from '../lib/icons'
 
 export function Forum() {
   const [posts, setPosts] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [classes, setClasses] = useState<any[]>([])
   const [myLessons, setMyLessons] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -46,19 +49,22 @@ export function Forum() {
           // Load teacher's lessons for sharing
           apiFetch<{ lessons: any[] }>(`/api/groups/${res.classes[0].id}/lessons`)
             .then((lRes) => setMyLessons(lRes.lessons))
-            .catch(() => {})
+            .catch((error) => notify(error.message || 'No se pudieron cargar las lecciones'))
         }
       })
-      .catch(() => {})
+      .catch((error) => notify(error.message || 'No se pudieron cargar los grupos'))
   }, [])
 
   const loadForum = async () => {
+    setLoading(true)
     try {
       const res = await apiFetch<{ posts: any[] }>('/api/forum/posts')
       setPosts(res.posts)
       setLoadError(null)
     } catch (err: any) {
       setLoadError(err?.message || 'No se pudo cargar el foro. Inicia sesión como docente.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -71,7 +77,7 @@ export function Forum() {
       sound.playCorrect()
       await loadForum()
     } catch (err: any) {
-      alert(err.message || 'Error al valorar la publicación')
+      notify(err.message || 'Error al valorar la publicación')
     }
   }
 
@@ -88,10 +94,10 @@ export function Forum() {
       triggerConfetti()
       setIsImportModalOpen(false)
       await loadForum()
-      alert('¡Lección y ejercicios importados con éxito en tu clase!')
+      notifySuccess('¡Lección y ejercicios importados con éxito en tu clase!')
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al importar lección')
+      notify(err.message || 'Error al importar lección')
     }
   }
 
@@ -105,14 +111,15 @@ export function Forum() {
 
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 select-none">
+      {loading && <AsyncState loading />}
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/30 shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-hero/80 via-surface to-accent-soft/80 border border-purple-500/30 shadow-xl">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display font-black text-3xl text-white">Foro Comunitario Docente</h1>
-            <Badge variant="primary">Modo Hosted</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display font-black text-3xl text-foreground">Foro Comunitario Docente</h1>
+            <Badge variant="primary">Comunidad online</Badge>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted">
             Descubre, califica e importa en 1 clic lecciones y actividades gamificadas creadas por otros
             profesores.
           </p>
@@ -131,7 +138,7 @@ export function Forum() {
 
       {/* Search Input */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+        <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-muted" />
         <Input
           type="text"
           placeholder="Buscar lecciones por título, tema o etiqueta (#Biología, #Ciencias)..."
@@ -143,13 +150,13 @@ export function Forum() {
 
       {/* Forum Posts Grid */}
       {loadError && (
-        <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-800 text-rose-200 text-sm">
+        <div className="p-4 rounded-2xl bg-danger-soft/60 border border-rose-800 text-danger text-sm">
           <p className="font-bold">No se pudo cargar el foro</p>
           <p className="text-xs mt-1">{loadError}</p>
           <button
             type="button"
             onClick={() => void loadForum()}
-            className="mt-2 text-xs text-rose-300 hover:text-rose-100 underline cursor-pointer"
+            className="mt-2 text-xs text-danger hover:text-rose-100 underline cursor-pointer"
           >
             Reintentar
           </button>
@@ -157,25 +164,21 @@ export function Forum() {
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredPosts.map((post) => (
-          <Card
-            key={post.id}
-            hoverEffect
-            className="space-y-4 flex flex-col justify-between p-6 border-slate-800"
-          >
+          <Card key={post.id} hoverEffect className="space-y-4 flex flex-col justify-between p-6 border-line">
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-display font-black text-xl text-white">{post.title}</h3>
-                  <span className="text-xs text-slate-400">Por: {post.teacherName}</span>
+                  <h3 className="font-display font-black text-xl text-foreground">{post.title}</h3>
+                  <span className="text-xs text-muted">Por: {post.teacherName}</span>
                 </div>
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold shrink-0">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 text-warning text-xs font-bold shrink-0">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-warning" />
                   <span>{post.avgRating || 5}.0</span>
                 </div>
               </div>
 
               {post.description && (
-                <p className="text-xs text-slate-300 leading-relaxed">{post.description}</p>
+                <p className="text-xs text-secondary leading-relaxed">{post.description}</p>
               )}
 
               {/* Tags */}
@@ -190,7 +193,7 @@ export function Forum() {
             </div>
 
             {/* Actions Bar */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-line">
               {/* Rating Stars */}
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -198,17 +201,17 @@ export function Forum() {
                     key={star}
                     type="button"
                     onClick={() => handleRate(post.id, star)}
-                    className="text-slate-600 hover:text-amber-400 transition-colors cursor-pointer"
+                    className="text-muted hover:text-warning transition-colors cursor-pointer"
                     title={`Valorar con ${star} estrellas`}
                   >
                     <Star
                       className={`w-4 h-4 ${
-                        star <= (post.avgRating || 0) ? 'fill-amber-400 text-amber-400' : ''
+                        star <= (post.avgRating || 0) ? 'fill-amber-400 text-warning' : ''
                       }`}
                     />
                   </button>
                 ))}
-                <span className="text-[11px] text-slate-500 ml-1">({post.votersCount || 0})</span>
+                <span className="text-[11px] text-muted ml-1">({post.votersCount || 0})</span>
               </div>
 
               {/* 1-Click Import Button */}
@@ -229,10 +232,10 @@ export function Forum() {
         ))}
 
         {filteredPosts.length === 0 && (
-          <div className="col-span-2 p-12 text-center rounded-3xl bg-slate-900/50 border border-slate-800 space-y-3">
-            <MessageSquare className="w-12 h-12 text-slate-600 mx-auto" />
-            <h4 className="font-bold text-white">No hay publicaciones disponibles</h4>
-            <p className="text-xs text-slate-400">
+          <div className="col-span-2 p-12 text-center rounded-3xl bg-surface/50 border border-line space-y-3">
+            <MessageSquare className="w-12 h-12 text-muted mx-auto" />
+            <h4 className="font-bold text-foreground">No hay publicaciones disponibles</h4>
+            <p className="text-xs text-muted">
               Sé el primero en compartir una lección con la comunidad docente.
             </p>
           </div>
@@ -248,7 +251,7 @@ export function Forum() {
       >
         <form onSubmit={handleImport} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Clase de Destino</label>
+            <label className="text-xs font-semibold text-secondary">Clase de Destino</label>
             <CustomSelect
               value={targetClassId}
               onChange={(val) => setTargetClassId(val)}

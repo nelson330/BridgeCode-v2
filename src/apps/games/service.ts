@@ -32,12 +32,19 @@ export class GamesService {
       throw AppError.notFound('Lección no encontrada o sin permisos')
     }
 
+    if (lessonFound[0].classId !== req.classId)
+      throw AppError.badRequest('La lección no pertenece a esta clase')
+
     if (lessonFound[0].status !== 'published') {
       throw AppError.badRequest('La lección debe estar publicada para iniciar una sesión en vivo')
     }
 
     // 2. Load exercises
-    let exerciseList = await db.select().from(exercises).where(eq(exercises.lessonId, req.lessonId))
+    let exerciseList = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.lessonId, req.lessonId))
+      .orderBy(exercises.sortOrder)
 
     if (exerciseList.length === 0) {
       throw AppError.badRequest('La lección no contiene ejercicios')
@@ -87,7 +94,11 @@ export class GamesService {
 
     const parentLesson = await db.select().from(lessons).where(eq(lessons.id, found[0].lessonId)).limit(1)
 
-    const exerciseList = await db.select().from(exercises).where(eq(exercises.lessonId, found[0].lessonId))
+    const exerciseList = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.lessonId, found[0].lessonId))
+      .orderBy(exercises.sortOrder)
 
     const room = RoomManager.getRoomById(sessionId)
 
@@ -95,6 +106,9 @@ export class GamesService {
       ...found[0],
       lessonTitle: parentLesson[0]?.title || 'Lección en Vivo',
       exercises: exerciseList,
+      phase: room?.phase || (found[0].status === 'finished' ? 'finished' : 'lobby'),
+      currentExerciseIndex: room?.currentExerciseIndex ?? 0,
+      remainingSec: room?.remainingTimeSec ?? 0,
       activeParticipants: room ? room.getParticipantsState() : [],
     }
   }
@@ -111,16 +125,36 @@ export class GamesService {
       throw AppError.notFound('Sesión no encontrada o sin permisos')
     }
 
-    await db.update(liveSessions).set({ status: 'active' }).where(eq(liveSessions.id, sessionId))
     const room = RoomManager.getRoomById(sessionId)
-    if (room) {
-      room.startGame()
-    }
+    if (!room) throw AppError.notFound('Sala activa no encontrada; crea una nueva partida')
+    if (room.status !== 'lobby') throw AppError.badRequest('La partida ya fue iniciada o finalizada')
+    await db.update(liveSessions).set({ status: 'active' }).where(eq(liveSessions.id, sessionId))
+    room.startGame()
 
     return { success: true, status: 'active' }
   }
 
-  static async nextExercise(_teacherId: string, sessionId: string) {
+  static async assertSessionOwner(teacherId: string, sessionId: string) {
+    const session = getDb()
+      .select()
+      .from(liveSessions)
+      .where(and(eq(liveSessions.id, sessionId), eq(liveSessions.teacherId, teacherId)))
+      .get()
+    if (!session) throw AppError.notFound('Sesión no encontrada o sin permisos')
+    return session
+  }
+
+  static async revealExercise(teacherId: string, sessionId: string) {
+    await GamesService.assertSessionOwner(teacherId, sessionId)
+    const room = RoomManager.getRoomById(sessionId)
+    if (!room || room.status !== 'active' || room.phase === 'countdown')
+      throw AppError.badRequest('La pregunta todavía no está activa')
+    room.revealResults()
+    return { success: true }
+  }
+
+  static async nextExercise(teacherId: string, sessionId: string) {
+    await GamesService.assertSessionOwner(teacherId, sessionId)
     const room = RoomManager.getRoomById(sessionId)
     if (!room) {
       throw AppError.notFound('Sala activa no encontrada')
@@ -129,12 +163,12 @@ export class GamesService {
     return { success: true, currentExerciseIndex: room.currentExerciseIndex }
   }
 
-  static async finishSession(_teacherId: string, sessionId: string) {
+  static async finishSession(teacherId: string, sessionId: string) {
+    await GamesService.assertSessionOwner(teacherId, sessionId)
     const room = RoomManager.getRoomById(sessionId)
-    if (room) {
-      await room.finishGame()
-      RoomManager.deleteRoom(sessionId)
-    }
+    if (!room) throw AppError.notFound('Sala activa no encontrada')
+    await room.finishGame()
+    RoomManager.deleteRoom(sessionId)
 
     return { success: true, status: 'finished' }
   }

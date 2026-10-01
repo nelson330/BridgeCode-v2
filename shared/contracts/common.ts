@@ -3,14 +3,12 @@ import { z } from 'zod'
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
   version: z.string(),
-  mode: z.enum(['local', 'hosted']),
   uptimeMs: z.number(),
 })
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
 
 export const ConfigResponseSchema = z.object({
-  mode: z.enum(['local', 'hosted']),
   locale: z.string(),
   maxUploadMb: z.number(),
   flags: z.object({

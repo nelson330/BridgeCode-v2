@@ -13,5 +13,4 @@ export interface SessionUser {
   role: UserRole
   status: UserStatus
   mustChangePassword: boolean
-  adminLocal?: boolean
 }

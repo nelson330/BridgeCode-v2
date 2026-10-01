@@ -10,7 +10,7 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
   let studentCookie: string
 
   beforeAll(async () => {
-    loadConfig({ MODE: 'hosted' })
+    loadConfig({})
     createTestDb()
     await runDatabaseSeed()
     app = createHttpApp()
@@ -35,7 +35,7 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
   })
 
   it('allows teacher to create exercises manually without AI', async () => {
-    const res = await app.request('/api/lessons/lsn_sistema_solar/exercises', {
+    const res = await app.request('/api/lessons/lsn_identidad_unidad_1/exercises', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
         Cookie: teacherCookie,
       },
       body: JSON.stringify({
-        lessonId: 'lsn_sistema_solar',
+        lessonId: 'lsn_identidad_unidad_1',
         title: 'Geología y Astronomía Planetaria',
         description: 'Lección completa para 5to de primaria.',
         tags: ['Geología', 'Astronomía', 'Primaria'],
@@ -96,14 +96,20 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
     })
     expect(rateRes.status).toBe(200)
 
-    // 1-Click Import to Historia Universal class
+    const targetResponse = await app.request('/api/classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: teacherCookie },
+      body: JSON.stringify({ name: 'Grupo para importar' }),
+    })
+    expect(targetResponse.status).toBe(201)
+    const target = (await targetResponse.json()) as any
     const impRes = await app.request(`/api/forum/posts/${postId}/import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Cookie: teacherCookie,
       },
-      body: JSON.stringify({ targetClassId: 'cls_historia_6b' }),
+      body: JSON.stringify({ targetClassId: target.class.id }),
     })
     expect(impRes.status).toBe(201)
     const impData = (await impRes.json()) as any
@@ -113,14 +119,14 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
 
   it('assigns multi-type homework (Reading, Discussion, Quiz) and allows student to complete them', async () => {
     // 1. Assign Reading homework
-    const readHwRes = await app.request('/api/classes/cls_ciencias_5a/homework', {
+    const readHwRes = await app.request('/api/classes/cls_historia_identidad/homework', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Cookie: teacherCookie,
       },
       body: JSON.stringify({
-        lessonId: 'lsn_sistema_solar',
+        lessonId: 'lsn_identidad_unidad_1',
         title: 'Lectura Guiada: Los Cuerpos Celestes',
         kind: 'reading',
         instructions: 'Leer atentamente los apuntes del sistema solar.',
@@ -140,7 +146,7 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
 
     // 3. Student completes reading task
     const completeReadRes = await app.request(
-      '/api/classes/cls_ciencias_5a/lessons/lsn_sistema_solar/reading/complete',
+      '/api/classes/cls_historia_identidad/lessons/lsn_identidad_unidad_1/reading/complete',
       {
         method: 'POST',
         headers: { Cookie: studentCookie },
@@ -152,7 +158,7 @@ describe('Multi-type Homework, Manual Builder, Forum & Reading Flows', () => {
     expect(completeReadData.pointsEarned).toBe(100)
 
     // 4. Check that gradebook reflects completed reading and homework
-    const gbRes = await app.request('/api/classes/cls_ciencias_5a/gradebook', {
+    const gbRes = await app.request('/api/classes/cls_historia_identidad/gradebook', {
       headers: { Cookie: teacherCookie },
     })
     expect(gbRes.status).toBe(200)

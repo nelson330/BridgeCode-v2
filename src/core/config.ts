@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 const envSchema = z.object({
-  MODE: z.enum(['local', 'hosted']).default('local'),
   PORT: z.coerce.number().default(3000),
   BASE_URL: z.string().default('http://localhost:3000'),
   COOKIE_SECURE: z

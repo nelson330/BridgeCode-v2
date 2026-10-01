@@ -14,7 +14,6 @@ export const AuthUserSchema = z.object({
   role: UserRoleSchema,
   status: UserStatusSchema,
   mustChangePassword: z.boolean(),
-  adminLocal: z.boolean().optional(),
 })
 export type AuthUser = z.infer<typeof AuthUserSchema>
 

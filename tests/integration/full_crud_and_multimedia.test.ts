@@ -21,7 +21,7 @@ describe('Full CRUD, Multimedia (PDF/Images), Live Game Filter & Ranking', () =>
   let homeworkId: string
 
   beforeAll(async () => {
-    loadConfig({ MODE: 'hosted' })
+    loadConfig({})
     initDb(':memory:')
     app = createHttpApp()
     const db = getDb()

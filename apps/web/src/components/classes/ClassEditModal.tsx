@@ -1,8 +1,10 @@
-import { Edit3 } from 'lucide-react'
 import { useState } from 'react'
 import { apiFetch } from '../../lib/api'
+import { notify } from '../../lib/feedback'
+import { Edit3 } from '../../lib/icons'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { FormError } from '../ui/FormError'
 import { Input } from '../ui/Input'
 
 interface ClassEditModalProps {
@@ -13,6 +15,7 @@ interface ClassEditModalProps {
 }
 
 export function ClassEditModal({ open, onOpenChange, cls, onClassUpdated }: ClassEditModalProps) {
+  const [formError, setFormError] = useState<string | null>(null)
   const [name, setName] = useState(cls?.name || '')
   const [loading, setLoading] = useState(false)
 
@@ -23,6 +26,7 @@ export function ClassEditModal({ open, onOpenChange, cls, onClassUpdated }: Clas
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     if (!cls || !name.trim()) return
 
     setLoading(true)
@@ -34,7 +38,7 @@ export function ClassEditModal({ open, onOpenChange, cls, onClassUpdated }: Clas
       onClassUpdated()
       onOpenChange(false)
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar la clase')
+      setFormError(err.message || 'Error al actualizar la clase')
     } finally {
       setLoading(false)
     }
@@ -49,12 +53,17 @@ export function ClassEditModal({ open, onOpenChange, cls, onClassUpdated }: Clas
       className="max-w-md"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        <FormError message={formError} />
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="classeditmodal-field-1"
+            >
               Nombre de la Clase
             </label>
             <Input
+              id="classeditmodal-field-1"
               placeholder="Ej: Biología 6to B"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -63,15 +72,15 @@ export function ClassEditModal({ open, onOpenChange, cls, onClassUpdated }: Clas
             />
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-canvas border border-line space-y-1">
+            <span className="text-xs font-bold text-muted uppercase tracking-wider block">
               Código de Invitación:
             </span>
-            <span className="font-mono font-bold text-lg text-indigo-400">{cls?.code}</span>
+            <span className="font-mono font-bold text-lg text-accent">{cls?.code}</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>

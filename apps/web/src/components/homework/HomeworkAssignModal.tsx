@@ -1,11 +1,21 @@
-import { BookOpen, Calendar, CheckCircle2, ClipboardList, Clock, MessageSquare, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { apiFetch } from '../../lib/api'
 import { sound } from '../../lib/audio-synth'
 import { triggerConfetti } from '../../lib/confetti'
+import { notify } from '../../lib/feedback'
+import {
+  BookOpen,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  MessageSquare,
+  Sparkles,
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { FormError } from '../ui/FormError'
 import { Input } from '../ui/Input'
 import { CustomSelect } from '../ui/Select'
 
@@ -28,6 +38,7 @@ export function HomeworkAssignModal({
   lessons,
   onHomeworkAssigned,
 }: HomeworkAssignModalProps) {
+  const [formError, setFormError] = useState<string | null>(null)
   const [selectedClassId, setSelectedClassId] = useState(classId || (classes[0]?.id ?? ''))
   const [selectedLessonId, setSelectedLessonId] = useState(lessons[0]?.id ?? '')
   const [kind, setKind] = useState<HomeworkKind>('quiz')
@@ -43,8 +54,9 @@ export function HomeworkAssignModal({
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     if (!title.trim() || !selectedClassId || !selectedLessonId) {
-      alert('Por favor completa el título y selecciona una lección')
+      setFormError('Por favor completa el título y selecciona una lección')
       return
     }
 
@@ -84,7 +96,7 @@ export function HomeworkAssignModal({
       setInstructions('')
     } catch (err: any) {
       sound.playIncorrect()
-      alert(err.message || 'Error al asignar la tarea')
+      setFormError(err.message || 'Error al asignar la tarea')
     } finally {
       setIsSaving(false)
     }
@@ -99,9 +111,10 @@ export function HomeworkAssignModal({
       className="max-w-2xl"
     >
       <form onSubmit={handleAssign} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
+        <FormError message={formError} />
         {/* Task Type Selector */}
         <div className="space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted block">
             1. Modalidad de la Actividad
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -110,17 +123,15 @@ export function HomeworkAssignModal({
               onClick={() => setKind('quiz')}
               className={`p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-1 ${
                 kind === 'quiz'
-                  ? 'border-indigo-500 bg-indigo-950/60 ring-2 ring-indigo-500/30'
-                  : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  ? 'border-indigo-500 bg-accent-soft/60 ring-2 ring-indigo-500/30'
+                  : 'border-line bg-canvas hover:border-line'
               }`}
             >
               <div className="flex items-center gap-2">
-                <ClipboardList
-                  className={`w-4 h-4 ${kind === 'quiz' ? 'text-indigo-400' : 'text-slate-400'}`}
-                />
-                <span className="font-bold text-xs text-white">Cuestionario</span>
+                <ClipboardList className={`w-4 h-4 ${kind === 'quiz' ? 'text-accent' : 'text-muted'}`} />
+                <span className="font-bold text-xs text-foreground">Cuestionario</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-muted">
                 Resuelve los ejercicios interactivos de la lección con autocorrección.
               </p>
             </button>
@@ -130,17 +141,15 @@ export function HomeworkAssignModal({
               onClick={() => setKind('reading')}
               className={`p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-1 ${
                 kind === 'reading'
-                  ? 'border-indigo-500 bg-indigo-950/60 ring-2 ring-indigo-500/30'
-                  : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  ? 'border-indigo-500 bg-accent-soft/60 ring-2 ring-indigo-500/30'
+                  : 'border-line bg-canvas hover:border-line'
               }`}
             >
               <div className="flex items-center gap-2">
-                <BookOpen
-                  className={`w-4 h-4 ${kind === 'reading' ? 'text-indigo-400' : 'text-slate-400'}`}
-                />
-                <span className="font-bold text-xs text-white">Lectura y Estudio</span>
+                <BookOpen className={`w-4 h-4 ${kind === 'reading' ? 'text-accent' : 'text-muted'}`} />
+                <span className="font-bold text-xs text-foreground">Lectura y Estudio</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-muted">
                 Lectura comprensiva del material temático y apuntes de la clase.
               </p>
             </button>
@@ -150,17 +159,17 @@ export function HomeworkAssignModal({
               onClick={() => setKind('discussion')}
               className={`p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-1 ${
                 kind === 'discussion'
-                  ? 'border-indigo-500 bg-indigo-950/60 ring-2 ring-indigo-500/30'
-                  : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  ? 'border-indigo-500 bg-accent-soft/60 ring-2 ring-indigo-500/30'
+                  : 'border-line bg-canvas hover:border-line'
               }`}
             >
               <div className="flex items-center gap-2">
                 <MessageSquare
-                  className={`w-4 h-4 ${kind === 'discussion' ? 'text-indigo-400' : 'text-slate-400'}`}
+                  className={`w-4 h-4 ${kind === 'discussion' ? 'text-accent' : 'text-muted'}`}
                 />
-                <span className="font-bold text-xs text-white">Debate en Muro</span>
+                <span className="font-bold text-xs text-foreground">Debate en Muro</span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-muted">
                 Participación en el muro escolar respondiendo a una consigna o pregunta.
               </p>
             </button>
@@ -170,7 +179,9 @@ export function HomeworkAssignModal({
         {/* Class & Lesson Selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Clase Asignada</label>
+            <label className="text-xs font-semibold text-secondary" htmlFor="homeworkassignmodal-field-1">
+              Clase Asignada
+            </label>
             <CustomSelect
               value={selectedClassId}
               onChange={(val) => setSelectedClassId(val)}
@@ -182,7 +193,7 @@ export function HomeworkAssignModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Lección de Origen</label>
+            <label className="text-xs font-semibold text-secondary">Lección de Origen</label>
             <CustomSelect
               value={selectedLessonId}
               onChange={(val) => setSelectedLessonId(val)}
@@ -196,8 +207,9 @@ export function HomeworkAssignModal({
 
         {/* Title */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Título de la Tarea</label>
+          <label className="text-xs font-semibold text-secondary">Título de la Tarea</label>
           <Input
+            id="homeworkassignmodal-field-1"
             placeholder={
               kind === 'quiz'
                 ? 'Ej: Tarea 1: Cuestionario del Sistema Solar'
@@ -214,10 +226,11 @@ export function HomeworkAssignModal({
 
         {/* Instructions / Prompt */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">
+          <label className="text-xs font-semibold text-secondary" htmlFor="homeworkassignmodal-field-2">
             {kind === 'discussion' ? 'Pregunta o Consigna de Debate' : 'Instrucciones para los Alumnos'}
           </label>
           <textarea
+            id="homeworkassignmodal-field-2"
             rows={3}
             placeholder={
               kind === 'discussion'
@@ -226,18 +239,22 @@ export function HomeworkAssignModal({
             }
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded-xl bg-canvas border border-line text-xs text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         {/* Due Date & Attempt Settings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+            <label
+              className="text-xs font-semibold text-secondary flex items-center gap-1"
+              htmlFor="homeworkassignmodal-field-3"
+            >
+              <Calendar className="w-3.5 h-3.5 text-warning" />
               Fecha Límite de Entrega
             </label>
             <Input
+              id="homeworkassignmodal-field-3"
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
@@ -247,8 +264,8 @@ export function HomeworkAssignModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-accent" />
               Límite de Intentos
             </label>
             <CustomSelect
@@ -264,7 +281,7 @@ export function HomeworkAssignModal({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+        <div className="flex justify-end gap-2 pt-3 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

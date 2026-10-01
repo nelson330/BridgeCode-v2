@@ -1,5 +1,9 @@
 import type { AiJobStatusResponse } from '@shared/contracts/ai'
 import type { ExerciseCreate } from '@shared/contracts/exercises'
+import { useEffect, useState } from 'react'
+import { apiFetch } from '../../lib/api'
+import { sound } from '../../lib/audio-synth'
+import { triggerConfetti } from '../../lib/confetti'
 import {
   AlertCircle,
   Bot,
@@ -11,11 +15,7 @@ import {
   Sliders,
   Sparkles,
   Trash2,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { apiFetch } from '../../lib/api'
-import { sound } from '../../lib/audio-synth'
-import { triggerConfetti } from '../../lib/confetti'
+} from '../../lib/icons'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
@@ -203,41 +203,43 @@ export function AiGeneratorModal({
     >
       <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
         {/* Active AI Engine Banner (Centralized from AI Module) */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
+        <div className="p-4 rounded-2xl bg-surface/80 border border-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-              <Bot className="w-5 h-5 text-indigo-400" />
+              <Bot className="w-5 h-5 text-accent" />
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-white text-sm">{activeProvider?.name || 'Motor de IA'}</span>
+                <span className="font-bold text-foreground text-sm">
+                  {activeProvider?.name || 'Motor de IA'}
+                </span>
                 {activeProvider?.isConfigured ? (
                   <Badge variant="success" className="text-[10px] px-2 py-0.5">
                     Configurado
                   </Badge>
                 ) : (
                   <Badge variant="warning" className="text-[10px] px-2 py-0.5">
-                    Modo Local / Fallback
+                    Requiere configuración
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 Modelo:{' '}
-                <span className="font-mono text-indigo-300 font-semibold">
+                <span className="font-mono text-accent font-semibold">
                   {activeProvider?.selectedModel || 'Predeterminado'}
                 </span>
               </p>
             </div>
           </div>
 
-          <div className="text-[11px] text-slate-500 italic">Configurado en la pestaña "Motor de IA"</div>
+          <div className="text-[11px] text-muted italic">Configurado en la pestaña "Motor de IA"</div>
         </div>
 
         {/* Pedagogical Configuration */}
         <div className="space-y-5">
           {/* Exercise Types Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted block">
               Tipos de Ejercicios Interactivos
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -250,12 +252,12 @@ export function AiGeneratorModal({
                     onClick={() => toggleType(t.id)}
                     className={`p-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-between gap-2 ${
                       active
-                        ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 shadow-sm'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-indigo-600/20 border-indigo-500 text-accent shadow-sm'
+                        : 'bg-surface border-line text-muted hover:text-foreground'
                     }`}
                   >
                     <span>{t.label}</span>
-                    {active && <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+                    {active && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
                   </button>
                 )
               })}
@@ -263,15 +265,15 @@ export function AiGeneratorModal({
           </div>
 
           {/* Quantity & Difficulty Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-canvas/60 border border-line/80">
             {/* Quantity Slider */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-300 flex items-center gap-1.5">
-                  <ListOrdered className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="text-secondary flex items-center gap-1.5">
+                  <ListOrdered className="w-3.5 h-3.5 text-accent" />
                   Cantidad de Ejercicios:
                 </span>
-                <span className="text-indigo-400 font-mono text-sm">{count}</span>
+                <span className="text-accent font-mono text-sm">{count}</span>
               </div>
               <input
                 type="range"
@@ -281,7 +283,7 @@ export function AiGeneratorModal({
                 onChange={(e) => setCount(Number.parseInt(e.target.value, 10))}
                 className="w-full accent-indigo-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-bold">
+              <div className="flex justify-between text-[10px] text-muted font-bold">
                 <span>1</span>
                 <span>5</span>
                 <span>10 ejercicios</span>
@@ -290,11 +292,11 @@ export function AiGeneratorModal({
 
             {/* Difficulty Selector */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-xs font-bold text-secondary flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-accent" />
                 Nivel de Dificultad:
               </span>
-              <div className="flex rounded-xl bg-slate-900 p-1 border border-slate-800">
+              <div className="flex rounded-xl bg-surface p-1 border border-line">
                 {(['easy', 'medium', 'hard'] as const).map((d) => (
                   <button
                     key={d}
@@ -302,8 +304,8 @@ export function AiGeneratorModal({
                     onClick={() => setDifficulty(d)}
                     className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all capitalize cursor-pointer ${
                       difficulty === d
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
+                        ? 'bg-indigo-600 text-on-accent shadow-sm'
+                        : 'text-muted hover:text-foreground'
                     }`}
                   >
                     {d === 'easy' ? 'Fácil' : d === 'medium' ? 'Media' : 'Difícil'}
@@ -318,12 +320,12 @@ export function AiGeneratorModal({
         {hasMaterialFile && (
           <div
             data-testid="ai-pdf-banner"
-            className="flex items-start gap-2 p-3 rounded-xl bg-amber-950/40 border border-amber-800/80 text-amber-200 text-xs"
+            className="flex items-start gap-2 p-3 rounded-xl bg-warning-soft/40 border border-amber-800/80 text-warning text-xs"
           >
             <FileText className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
               <p className="font-bold">PDF adjunto a la lección</p>
-              <p className="text-amber-300/80">
+              <p className="text-warning/80">
                 El modelo intentará leer el PDF y extraer su contenido antes de generar las preguntas. Si el
                 PDF es una imagen escaneada o no contiene texto seleccionable, la generación se cancelará con
                 un mensaje claro.
@@ -334,12 +336,12 @@ export function AiGeneratorModal({
 
         {/* Error Message with Immediate Retry */}
         {errorMessage && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-danger-soft/60 border border-rose-800/80 text-danger text-xs">
             <div className="flex items-start gap-2.5 min-w-0">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-danger" />
               <div className="space-y-0.5">
-                <p className="font-bold text-rose-200">No se pudieron generar los ejercicios</p>
-                <p className="text-rose-300/90 whitespace-pre-line">{errorMessage}</p>
+                <p className="font-bold text-danger">No se pudieron generar los ejercicios</p>
+                <p className="text-danger/90 whitespace-pre-line">{errorMessage}</p>
               </div>
             </div>
             <Button
@@ -348,7 +350,7 @@ export function AiGeneratorModal({
               size="sm"
               onClick={handleStartGeneration}
               disabled={isGenerating}
-              className="shrink-0 gap-1.5 text-xs text-rose-200 border-rose-700/60 hover:bg-rose-900/40"
+              className="shrink-0 gap-1.5 text-xs text-danger border-rose-700/60 hover:bg-rose-900/40"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Reintentar</span>
@@ -359,12 +361,12 @@ export function AiGeneratorModal({
         {/* Generation Results Preview with individual discard & add */}
         {generatedResults.length > 0 && (
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-success flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 {generatedResults.length} Ejercicios Generados con Éxito
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-muted">
                 Descarta los que no te gusten o añádelos a tu lección
               </span>
             </div>
@@ -373,7 +375,7 @@ export function AiGeneratorModal({
               {generatedResults.map((ex, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-start justify-between gap-3 group hover:border-slate-700 transition-colors"
+                  className="p-3.5 rounded-xl bg-canvas border border-line text-xs flex items-start justify-between gap-3 group hover:border-line transition-colors"
                 >
                   <div className="space-y-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -390,10 +392,10 @@ export function AiGeneratorModal({
                                   ? 'SLIDER'
                                   : 'EMPAREJAR'}
                       </Badge>
-                      <span className="font-bold text-white truncate">{ex.prompt}</span>
+                      <span className="font-bold text-foreground truncate">{ex.prompt}</span>
                     </div>
                     {ex.explanation && (
-                      <div className="text-slate-400 italic text-[11px] leading-relaxed">
+                      <div className="text-muted italic text-[11px] leading-relaxed">
                         <MarkdownText content={ex.explanation} />
                       </div>
                     )}
@@ -403,7 +405,7 @@ export function AiGeneratorModal({
                     <button
                       type="button"
                       onClick={() => handleDiscardExercise(idx)}
-                      className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      className="p-2 rounded-xl text-muted hover:text-danger hover:bg-danger-soft/40 transition-colors cursor-pointer"
                       title="Descartar este ejercicio de la lista"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -413,7 +415,7 @@ export function AiGeneratorModal({
                       variant="secondary"
                       size="sm"
                       onClick={() => handleAddSingleToLesson(ex, idx)}
-                      className="shrink-0 text-[11px] gap-1 text-emerald-400 hover:text-emerald-300"
+                      className="shrink-0 text-[11px] gap-1 text-success hover:text-success"
                       title="Añadir únicamente este ejercicio a la lección"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -427,7 +429,7 @@ export function AiGeneratorModal({
         )}
 
         {/* Modal Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={isSavingToLesson}>
             Cerrar
           </Button>
@@ -439,7 +441,7 @@ export function AiGeneratorModal({
               onClick={handleAddAllToLesson}
               isLoading={isSavingToLesson}
               disabled={isSavingToLesson}
-              className="gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/20"
+              className="gap-2 bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-on-accent shadow-lg shadow-emerald-500/20"
             >
               {addedSuccess ? (
                 <>

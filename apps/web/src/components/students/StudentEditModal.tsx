@@ -1,8 +1,10 @@
-import { Edit3 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../../lib/api'
+import { notify } from '../../lib/feedback'
+import { Edit3 } from '../../lib/icons'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
+import { FormError } from '../ui/FormError'
 import { Input } from '../ui/Input'
 
 interface StudentEditModalProps {
@@ -20,6 +22,7 @@ export function StudentEditModal({
   classId,
   onStudentUpdated,
 }: StudentEditModalProps) {
+  const [formError, setFormError] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState(student?.displayName || '')
   const [username, setUsername] = useState(student?.username || '')
   const [password, setPassword] = useState('')
@@ -35,6 +38,7 @@ export function StudentEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
     if (!student || !displayName.trim() || !username.trim()) return
 
     setLoading(true)
@@ -50,7 +54,7 @@ export function StudentEditModal({
       onStudentUpdated()
       onOpenChange(false)
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar el estudiante')
+      setFormError(err.message || 'Error al actualizar el estudiante')
     } finally {
       setLoading(false)
     }
@@ -65,12 +69,17 @@ export function StudentEditModal({
       className="max-w-md"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        <FormError message={formError} />
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="studenteditmodal-field-1"
+            >
               Nombre y Apellidos
             </label>
             <Input
+              id="studenteditmodal-field-1"
               placeholder="Ej: Sofía García"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -80,10 +89,14 @@ export function StudentEditModal({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="studenteditmodal-field-2"
+            >
               Nombre de Usuario (Login)
             </label>
             <Input
+              id="studenteditmodal-field-2"
               placeholder="Ej: sofia.garcia"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -92,10 +105,14 @@ export function StudentEditModal({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+            <label
+              className="text-xs font-bold text-secondary uppercase tracking-wider block mb-1.5"
+              htmlFor="studenteditmodal-field-3"
+            >
               Nueva Contraseña (Opcional)
             </label>
             <Input
+              id="studenteditmodal-field-3"
               type="text"
               placeholder="Dejar en blanco para conservar la actual"
               value={password}
@@ -104,7 +121,7 @@ export function StudentEditModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-line">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>

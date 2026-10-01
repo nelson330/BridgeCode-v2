@@ -45,7 +45,7 @@ export function getOrCreateAppKey(): Buffer {
 
   const newKey = randomBytes(32)
   writeFileSync(keyFile, newKey, { mode: 0o600 })
-  logger.warn('🔑 Generated new APP_KEY in data/.keys/app.key (permissions 600)')
+  logger.warn('Generated new APP_KEY in data/.keys/app.key (permissions 600)')
 
   appKeyCache = newKey
   return appKeyCache
